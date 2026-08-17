@@ -56,3 +56,49 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
   Vercel origin in DevTools is what actually proves the allowlist works — which
   is the check that matters, since every authenticated call from Phase 2 onward
   is browser-originated.
+
+## Phase 1 — Data model
+
+- **Connection URLs live in `prisma.config.ts`, not `schema.prisma`.** Prisma 7
+  removed `url` and `directUrl` from the datasource block. This turned out to
+  suit Supabase: the config file is only read by the CLI, so it points at the
+  **direct** connection (`:5432`) that migrations need, while the application
+  connects over the **pooled** one (`:6543`). Traded away having one place to
+  look for the connection string.
+- **`@prisma/adapter-pg` rather than a bare client.** Prisma 7 removed
+  `datasourceUrl` and requires a driver adapter unless you use Accelerate.
+  Traded away nothing we wanted; it does add `pg` to the dependency tree.
+- **`rootDir` is pinned in `tsconfig.build.json`.** With `prisma.config.ts` at
+  the app root, TypeScript infers a root of `.` and emits `dist/src/main.js`,
+  which `start:prod` would not find — a deploy that builds green and dies on
+  boot. Traded away nothing; it just has to be explicit.
+- **`incremental` is off for the build config.** `nest-cli.json` sets
+  `deleteOutDir`, and the two together silently produce an empty `dist`: tsc
+  sees unchanged inputs and emits nothing into the directory it just wiped.
+  Traded away a slightly faster rebuild.
+- **The generated client is gitignored and rebuilt by `build`/`typecheck`.**
+  Keeps generated code out of review diffs. Traded away the ability to run
+  `tsc` on a fresh clone without first having database credentials, since
+  `prisma generate` loads `prisma.config.ts` and resolves `DIRECT_URL` eagerly.
+- **`bcryptjs` instead of native `bcrypt`.** Same hash format, no native
+  compilation step in the Railway build — one fewer way for a deploy to fail.
+  Traded away hashing speed, which is irrelevant at this login volume.
+- **Ids are generated in the seed rather than by the database.** Lets each
+  folder's materialized path be built in a single pass without reading rows
+  back. Traded away relying on the schema's `@default(uuid())` there.
+- **The seed creates folders but no files.** A `File` row asserts that an
+  object exists in Supabase Storage behind it, and nothing uploads objects
+  until Phase 5 — seeded rows whose downloads 404 would be worse than an empty
+  folder. Traded away a richer-looking demo until upload lands.
+- **The e2e test stubs `PrismaService` instead of connecting.** `/health` must
+  answer without a database, the suite should run on a machine with no
+  credentials, and Prisma 7 loads its query compiler through a dynamic
+  `import()` that Jest cannot execute without `--experimental-vm-modules`.
+  Traded away end-to-end coverage of the database wiring, which is instead
+  proven by booting the built server against Supabase.
+- **Jest maps `./x.js` imports back to `./x`.** The generated client uses
+  extensioned relative imports, which TypeScript resolves and Jest does not.
+  Traded away nothing; it is two lines in each Jest config.
+- **The seed deletes and recreates only the demo account.** Re-running it is
+  safe and leaves any other data alone. Traded away preserving demo data
+  between runs.

@@ -48,6 +48,10 @@ cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
 # fill in the values described in each file
 
+pnpm --filter @acme/api prisma:migrate   # apply migrations
+pnpm --filter @acme/api db:seed          # demo account + a nested folder tree
+pnpm --filter @acme/api prisma:studio    # browse the data
+
 pnpm dev            # both apps
 pnpm dev:api        # api only  → http://localhost:3001
 pnpm dev:web        # web only  → http://localhost:3000

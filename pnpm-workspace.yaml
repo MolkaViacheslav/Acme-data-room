@@ -3,7 +3,9 @@ packages:
 
 # Explicit postinstall-script policy so `pnpm install` never stops to ask.
 allowBuilds:
+  "@prisma/engines": true
   "@tailwindcss/oxide": true
   esbuild: true
+  prisma: true
   sharp: false
   unrs-resolver: false

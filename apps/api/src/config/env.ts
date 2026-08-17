@@ -11,6 +11,11 @@ export interface AppEnv {
   readonly port: number;
   /** Exact origins allowed to call this API with credentials. Never `*`. */
   readonly corsOrigins: readonly string[];
+  /**
+   * Pooled Postgres connection (`:6543`) used by the running app. Migrations
+   * use the direct connection instead, configured in `prisma.config.ts`.
+   */
+  readonly databaseUrl: string;
 }
 
 class EnvError extends Error {
@@ -63,10 +68,24 @@ function readCorsOrigins(raw: string | undefined): readonly string[] {
   return origins;
 }
 
+function readDatabaseUrl(raw: string | undefined): string {
+  const url = (raw ?? '').trim();
+
+  if (url === '') {
+    throw new EnvError('DATABASE_URL', 'must be set to the pooled Postgres connection string');
+  }
+  if (!url.startsWith('postgres://') && !url.startsWith('postgresql://')) {
+    throw new EnvError('DATABASE_URL', 'must be a postgresql:// connection string');
+  }
+
+  return url;
+}
+
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
   return {
     nodeEnv: readNodeEnv(source.NODE_ENV),
     port: readPort(source.PORT),
     corsOrigins: readCorsOrigins(source.WEB_ORIGIN),
+    databaseUrl: readDatabaseUrl(source.DATABASE_URL),
   };
 }

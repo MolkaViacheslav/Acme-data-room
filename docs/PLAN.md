@@ -65,12 +65,12 @@ deliberately:
 3. **`Share.role` is an enum with `VIEWER` today.** Adding `EDITOR` later is one
    enum value plus policy code — no schema migration of the sharing model.
 
-- [ ] Schema written with the above constraints and enums
-- [ ] Indexes: `Folder(dataRoomId, path)`, `File(folderId, name)`,
+- [x] Schema written with the above constraints and enums
+- [x] Indexes: `Folder(dataRoomId, path)`, `File(folderId, name)`,
       `File(folderId, createdAt, id)`, `Share(token)`, `Share(dataRoomId)`
-- [ ] `onDelete: Cascade` set so deleting a DataRoom cleans up cleanly
-- [ ] Migration applied against Supabase
-- [ ] Seed script: one user, one data room with a small nested tree
+- [x] `onDelete: Cascade` set so deleting a DataRoom cleans up cleanly
+- [x] Migration applied against Supabase
+- [x] Seed script: one user, one data room with a small nested tree
 
 ---
 

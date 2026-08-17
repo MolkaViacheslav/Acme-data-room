@@ -1,0 +1,172 @@
+// Connection URLs live in `prisma.config.ts` — Prisma 7 removed `url` and
+// `directUrl` from the datasource block.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UploadStatus {
+  PENDING
+  READY
+}
+
+enum ShareResourceType {
+  DATA_ROOM
+  FOLDER
+  FILE
+}
+
+enum ShareMode {
+  PUBLIC_LINK
+  RESTRICTED
+}
+
+/// Only VIEWER exists today. Adding EDITOR later is one enum value plus
+/// write-permission policy in AccessService — no migration of the share model.
+enum ShareRole {
+  VIEWER
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+
+  dataRooms       DataRoom[]
+  createdShares   Share[]
+  shareInvitations ShareRecipient[]
+}
+
+model DataRoom {
+  id      String @id @default(uuid())
+  name    String
+  ownerId String
+
+  /// Nullable only because the root Folder cannot exist before the DataRoom
+  /// row it points at. Both are created in one transaction, so it is never
+  /// observably null outside that transaction.
+  rootFolderId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner      User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  rootFolder Folder? @relation("DataRoomRoot", fields: [rootFolderId], references: [id], onDelete: SetNull)
+
+  folders Folder[] @relation("DataRoomFolders")
+  files   File[]
+  shares  Share[]
+
+  @@index([ownerId])
+}
+
+model Folder {
+  id         String  @id @default(uuid())
+  name       String
+  dataRoomId String
+  parentId   String?
+
+  /// Materialized path: `/<rootId>/<childId>/<grandchildId>/`.
+  /// Leading and trailing slashes make a prefix match unambiguous, so
+  /// "everything under this folder" is one indexed query rather than N.
+  /// Recomputed for the whole subtree on move.
+  path String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dataRoom DataRoom @relation("DataRoomFolders", fields: [dataRoomId], references: [id], onDelete: Cascade)
+  parent   Folder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children Folder[] @relation("FolderTree")
+  files    File[]
+
+  rootOf DataRoom? @relation("DataRoomRoot")
+
+  /// Postgres treats NULLs as distinct, so this does not constrain the single
+  /// per-data-room root folder (parentId = null). That one is pinned instead by
+  /// the unique DataRoom.rootFolderId.
+  @@unique([parentId, name])
+  @@index([dataRoomId, path])
+}
+
+model File {
+  id         String @id @default(uuid())
+  name       String
+  folderId   String
+  dataRoomId String
+
+  /// `<dataRoomId>/<fileId>.pdf` in the private Supabase Storage bucket.
+  storageKey String @unique
+
+  mimeType     String
+  sizeBytes    Int
+  uploadStatus UploadStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  folder   Folder   @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  dataRoom DataRoom @relation(fields: [dataRoomId], references: [id], onDelete: Cascade)
+
+  /// Never null, because every DataRoom owns a root Folder — so this actually
+  /// enforces name uniqueness at the drive root too.
+  @@unique([folderId, name])
+  @@index([folderId, name])
+  @@index([folderId, createdAt, id])
+  @@index([dataRoomId])
+}
+
+model Share {
+  id String @id @default(uuid())
+
+  /// Deliberately polymorphic: no foreign key, because the target may be a
+  /// DataRoom, a Folder or a File. AccessService resolves it against
+  /// resourceType. Cascade cleanup rides on dataRoomId instead.
+  resourceType ShareResourceType
+  resourceId   String
+  dataRoomId   String
+
+  mode ShareMode
+  role ShareRole @default(VIEWER)
+
+  /// Set for PUBLIC_LINK shares only; RESTRICTED shares are matched by recipient.
+  token String? @unique
+
+  createdById String
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  dataRoom   DataRoom         @relation(fields: [dataRoomId], references: [id], onDelete: Cascade)
+  createdBy  User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  recipients ShareRecipient[]
+
+  @@index([dataRoomId])
+  @@index([resourceType, resourceId])
+}
+
+model ShareRecipient {
+  id      String  @id @default(uuid())
+  shareId String
+  email   String
+
+  /// Filled once the invited person has an account. Kept alongside `email` so
+  /// an invitation sent before registration still resolves afterwards.
+  userId String?
+
+  share Share @relation(fields: [shareId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([shareId, email])
+  @@index([email])
+  @@index([userId])
+}

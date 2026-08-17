@@ -1,4 +1,15 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "test", "dist", "**/*spec.ts"]
+  "compilerOptions": {
+    // Pinned explicitly: `prisma.config.ts` sits at the app root, and without
+    // this TypeScript infers a rootDir of `.` and emits `dist/src/main.js`,
+    // which `start:prod` (`node dist/main`) would not find.
+    "rootDir": "./src",
+
+    // `nest-cli.json` sets `deleteOutDir`, which wipes `dist` on every build.
+    // Combined with incremental compilation that yields a silently empty
+    // `dist`: tsc sees no changed inputs and emits nothing.
+    "incremental": false
+  },
+  "exclude": ["node_modules", "test", "dist", "**/*spec.ts", "prisma.config.ts", "prisma"]
 }

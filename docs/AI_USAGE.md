@@ -40,3 +40,23 @@ appended to as work proceeds.
   checklist, so that credentials never entered an AI session. The one build
   failure (`pnpm: not found` on Railway) was diagnosed and fixed by hand in the
   Railway dashboard; the fix was afterwards written back into `railway.json`.
+
+### Phase 1 — Data model
+
+- Prisma 7's breaking changes were established by reading current documentation
+  and then verifying each one against this repository — not from model memory,
+  which still describes Prisma 6. Four differences mattered: the renamed
+  `prisma-client` generator with a required `output`, the move of connection
+  URLs into `prisma.config.ts`, the now-mandatory driver adapter, and the loss
+  of `datasourceUrl`.
+- Two build defects were caught before they reached a deploy, both by running
+  the real commands rather than reasoning about them: `prisma.config.ts` at the
+  app root shifted the compiler output to `dist/src/main.js`, which would have
+  built green and then failed to boot; and `deleteOutDir` combined with
+  incremental compilation produced a silently empty `dist`.
+- Database connectivity was proven with a throwaway `SELECT 1` probe through
+  the pooled connection before any migration was applied. The probe was deleted
+  afterwards.
+- The seed was run twice to confirm it is idempotent, and the resulting tree was
+  read back to confirm the materialized paths and the single-query subtree
+  prefix lookup behave as the schema intends.

@@ -9,6 +9,9 @@ build/
 out/
 *.tsbuildinfo
 
+# Prisma client is generated from schema.prisma at build time
+apps/api/src/generated/
+
 # env — never commit real values, only .env.example
 .env
 .env.*
