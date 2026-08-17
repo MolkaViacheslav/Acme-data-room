@@ -169,18 +169,20 @@ Direct browser → Supabase Storage. The file never passes through Railway.
 
 ## Phase 6 — Explorer UI (~3h)
 
-- [ ] `/d/[folderId]` route rendering the folder contents
-- [ ] Breadcrumb bar, clickable, truncating in the middle when deep
-- [ ] Table view: name, type icon, size, modified. Sortable headers.
-- [ ] Row actions menu: open, rename, move, share, delete
-- [ ] Rename: inline edit, optimistic, reverts with a toast on 409
-- [ ] Move: dialog with a folder tree picker; prevent moving a folder into its
+- [x] `/d/[folderId]` route rendering the folder contents
+- [x] Breadcrumb bar, clickable, truncating in the middle when deep
+- [x] Table view: name, type icon, size, modified. Sortable headers.
+- [x] Row actions menu: open, rename, move, delete. **Share is deliberately
+      absent** until Phase 7 ships its dialog — CLAUDE.md forbids shipping a
+      control for something that is not implemented.
+- [x] Rename: inline edit, optimistic, reverts with a toast on 409
+- [x] Move: dialog with a folder tree picker; prevent moving a folder into its
       own descendant
-- [ ] Delete: dialog showing the real counts from `delete-preview`
-- [ ] PDF viewer: dialog or `/f/[fileId]` page rendering the signed URL in an
-      `<iframe>`; handles the expired-URL case by re-requesting
-- [ ] Empty state, loading skeleton, and error state for the folder view
-- [ ] Keyboard: `Esc` closes dialogs, `Enter` confirms
+- [x] Delete: dialog showing the real counts from `delete-preview`
+- [x] PDF viewer: dialog rendering the signed URL in an `<iframe>`; handles the
+      expired-URL case by re-requesting
+- [x] Empty state, loading skeleton, and error state for the folder view
+- [x] Keyboard: `Esc` closes dialogs, `Enter` confirms
 
 ---
 

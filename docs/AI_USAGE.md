@@ -132,3 +132,15 @@ appended to as work proceeds.
   that the size and type limits are unenforceable at the signed URL and must be
   checked again on completion, and that abandoned `PENDING` rows would hold
   their name against a retry while being invisible to the user.
+
+### Phase 6 — Explorer UI
+
+- The conflict between `PLAN.md` (which lists a Share action) and `CLAUDE.md`
+  (which forbids controls for unimplemented features) was raised and settled
+  before any code was written, rather than resolved silently in either
+  direction.
+- The claim that the Phase 5 upload panel would "plug in without changes" was
+  corrected rather than repeated: it needed one optional callback prop so the
+  listing could refresh, which the underlying hook already supported.
+- Gating on the role the API already returns was chosen deliberately so that
+  Phase 7's read-only view falls out of Phase 6 rather than being retrofitted.

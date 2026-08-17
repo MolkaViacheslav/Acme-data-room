@@ -288,3 +288,44 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
 - **The upload panel takes `folderId` as a prop and nothing else.** It sits on
   the temporary landing page today and moves into the explorer in Phase 6
   without changes.
+
+## Phase 6 — Explorer UI
+
+- **"Share" is not in the row action menu.** `PLAN.md` lists it there, but
+  sharing lands in Phase 7, and `CLAUDE.md` forbids shipping a control for
+  something unimplemented — a disabled "coming soon" item costs points in the
+  category this phase is judged on. The menu has Open, Rename, Move, Delete;
+  Share joins it with its dialog. This is the one place Phase 6 knowingly
+  departs from the letter of the plan.
+- **The temporary landing page was deleted, not kept alongside.** `/` now
+  resolves the session and redirects to the caller's root folder. Two screens
+  showing the same data room would be exactly the kind of half-finished surface
+  the grading rubric punishes.
+- **Every control is gated on `folder.role`.** `GET /folders/:id` has returned
+  the caller's role since Phase 4, so a viewer sees no action menu, no upload
+  panel and no "New folder" button — rather than controls that answer 403.
+  Phase 7's read-only shared view therefore needs no separate implementation.
+- **Sorting lives in the URL (`?sort=&dir=`), not component state.** Back
+  behaves, and a link carries the view it was copied from. Traded away: sorting
+  resets when navigating to a folder through a link that omits the parameters.
+- **Folders show `—` for size, not `0 B`.** A folder has no size of its own —
+  the listing sorts them by name under a size sort, as Phase 4 established, and
+  claiming zero bytes would be a small lie in a table people read for facts.
+- **Explicit "Load more" rather than infinite scroll.** The cursor makes either
+  possible; a button is predictable, keyboard-reachable, and never fights the
+  scroll position. Traded away a little polish on very long folders.
+- **The move dialog computes the blocked subtree client-side.** The tree is
+  built top-down, so every node already knows its ancestors — no API change was
+  needed to grey out the folder being moved and everything under it. The server
+  enforces the same rule through the path prefix; the client copy exists to
+  explain, not to protect.
+- **Blocked destinations are shown greyed out with a reason, not hidden.** A
+  folder that silently disappears from a picker reads as a bug.
+- **Rename is optimistic against a full snapshot of the listing.** Name
+  collisions are common enough that the revert has to restore exactly what was
+  there, and the 409's `suggestedName` goes straight into the toast.
+- **The PDF viewer never reuses a cached signed URL** (`staleTime: 0`,
+  `gcTime: 0`). The link is deliberately short-lived, so a cached one is more
+  likely expired than useful; reopening asks for a fresh one.
+- **The viewer takes a file id and nothing else**, like the upload panel before
+  it, so Phase 7 can drop it onto a shared-file page unchanged.

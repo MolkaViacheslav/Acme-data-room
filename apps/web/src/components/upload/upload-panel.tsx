@@ -11,8 +11,17 @@ import { UploadItem } from './upload-item';
  * Self-contained: it needs nothing but the folder to upload into, so it moves
  * into the explorer in the next phase unchanged.
  */
-export function UploadPanel({ folderId }: { folderId: string }) {
-  const { entries, add, cancel, retry, dismiss, clearFinished } = useUploadQueue(folderId);
+interface UploadPanelProps {
+  readonly folderId: string;
+  /** Lets the surrounding view refresh its listing once a file lands. */
+  readonly onUploaded?: () => void;
+}
+
+export function UploadPanel({ folderId, onUploaded }: UploadPanelProps) {
+  const { entries, add, cancel, retry, dismiss, clearFinished } = useUploadQueue(
+    folderId,
+    onUploaded,
+  );
 
   const settled = entries.filter(
     (entry) => entry.state.kind !== 'uploading' && entry.state.kind !== 'queued',
