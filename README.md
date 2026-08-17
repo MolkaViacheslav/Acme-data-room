@@ -3,9 +3,16 @@
 A secure document repository — nested folders, PDF upload, and read-only
 sharing of a data room, a folder, or a single file.
 
-> **Status: Phase 0 of `docs/PLAN.md`.** The deployment skeleton is in place;
-> no product features are implemented yet. This README grows with the project
-> and is finalised in Phase 8.
+> **Status: Phase 0 of `docs/PLAN.md` complete.** Both apps are deployed and
+> talking to each other over public HTTPS; no product features are implemented
+> yet. This README grows with the project and is finalised in Phase 8.
+
+## Live
+
+| App | URL |
+| --- | --- |
+| Web | <https://acme-data-room-web.vercel.app> |
+| API | <https://acme-data-room-production.up.railway.app/health> |
 
 ## Stack
 

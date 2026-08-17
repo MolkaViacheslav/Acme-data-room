@@ -36,3 +36,7 @@ appended to as work proceeds.
 - Correction made during review: the unreachable state initially surfaced
   Node's raw `fetch failed`, which violates the project's error-message rule.
   Replaced with a message that names the URL and the setting that controls it.
+- Deployment to Railway and Vercel was carried out by hand, from a written
+  checklist, so that credentials never entered an AI session. The one build
+  failure (`pnpm: not found` on Railway) was diagnosed and fixed by hand in the
+  Railway dashboard; the fix was afterwards written back into `railway.json`.

@@ -18,10 +18,10 @@ kill take-homes. This phase is non-negotiable.
 - [x] `apps/web`: Next.js App Router + Tailwind + shadcn/ui init
 - [x] Supabase project created; Postgres connection strings noted
       (pooled `:6543` for runtime, direct `:5432` for migrations)
-- [ ] Supabase Storage: private bucket `data-room-files` created
+- [x] Supabase Storage: private bucket `data-room-files` created
 - [x] `.env.example` in both apps listing every variable, no secrets
-- [ ] Deploy `apps/api` to Railway; `/health` reachable over public HTTPS
-- [ ] Deploy `apps/web` to Vercel; it calls `/health` and renders the result
+- [x] Deploy `apps/api` to Railway; `/health` reachable over public HTTPS
+- [x] Deploy `apps/web` to Vercel; it calls `/health` and renders the result
 - [x] CORS on the API: explicit origin allowlist, `credentials: true`
 
 **Cross-site cookie gotcha.** The frontend (`*.vercel.app`) and backend

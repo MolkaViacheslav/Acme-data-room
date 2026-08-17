@@ -31,3 +31,28 @@ This file feeds the README's design-decisions section.
 - **Railway builds from the repo root, not from `apps/api`.** The pnpm
   workspace and lockfile live at the root, so a root-scoped install keeps
   `--frozen-lockfile` honest. Traded away a smaller build context.
+
+## Phase 0 — deployment
+
+Live: web on <https://acme-data-room-web.vercel.app>, API on
+<https://acme-data-room-production.up.railway.app>.
+
+- **Vercel's project root is `apps/web`, Railway's is the repo root.** The
+  frontend only needs its own app directory; the API needs the workspace
+  lockfile above it. Traded away a symmetric configuration between the two
+  platforms, which is a recurring source of confusion.
+- **pnpm is activated explicitly via Corepack in the Railway build.** The build
+  image failed with `pnpm: not found` — a `packageManager` field in the root
+  `package.json` was not by itself enough to put pnpm on `PATH`. Fixed by
+  prefixing the build with `corepack enable && corepack prepare
+  pnpm@11.22.0 --activate`. The fix was applied in the Railway dashboard first
+  and is now encoded in `railway.json`, so the repository describes its own
+  build rather than depending on dashboard state a reviewer cannot see. Traded
+  away a single source for the pnpm version: it is now pinned both in
+  `packageManager` and in the build command, and the two must move together.
+- **CORS was verified from the browser, not only from the server.** The status
+  page is a Server Component, so its fetch runs on Vercel's Node runtime and
+  never exercises CORS. A `fetch(..., { credentials: 'include' })` from the
+  Vercel origin in DevTools is what actually proves the allowlist works — which
+  is the check that matters, since every authenticated call from Phase 2 onward
+  is browser-originated.
