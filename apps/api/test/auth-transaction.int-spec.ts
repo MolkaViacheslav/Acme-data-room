@@ -1,32 +1,19 @@
-import 'dotenv/config';
-import { PrismaPg } from '@prisma/adapter-pg';
-
 import { createUserWithDataRoom } from '../src/auth/create-user-with-data-room';
-import { PrismaClient } from '../src/generated/prisma/client';
+import type { PrismaClient } from '../src/generated/prisma/client';
+
+import {
+  assertSchemaIsolation,
+  createTestPrismaClient,
+  describeWithDatabase,
+} from './test-database';
 
 /**
- * Runs against a real Postgres — an isolated schema in the same Supabase
- * project, set as `TEST_DATABASE_URL`.
+ * The registration transaction against a real Postgres.
  *
- * Skips itself when that variable is absent, so `pnpm test` stays green on a
- * machine with no database credentials.
- *
- * A mocked version of this test could only assert that we called the methods we
+ * A mocked version of this could only assert that we called the methods we
  * called. The thing worth proving — that a failure part-way through leaves no
  * orphaned user behind — exists only in the database.
  */
-const testDatabaseUrl = process.env.TEST_DATABASE_URL;
-const describeWithDatabase = testDatabaseUrl === undefined ? describe.skip : describe;
-
-/**
- * The schema these tests are allowed to write to, and truncate.
- *
- * `?schema=` in the connection string is a Prisma CLI convention: the `pg`
- * driver behind the adapter ignores unknown query parameters, so the adapter
- * must be told the schema explicitly. Getting this wrong once pointed the
- * suite at `public` and deleted the seeded demo account.
- */
-const TEST_SCHEMA = 'test';
 
 /**
  * Stands in for the client, intercepting only `$transaction` — the single
@@ -53,45 +40,12 @@ function clientFailingAtFolderCreate(prisma: PrismaClient): PrismaClient {
   return failing as unknown as PrismaClient;
 }
 
-const SENTINEL_EMAIL = 'schema-isolation-probe@example.test';
-
-async function countInSchema(prisma: PrismaClient, schema: 'public' | 'test'): Promise<number> {
-  const rows =
-    schema === 'test'
-      ? await prisma.$queryRaw<{ count: number }[]>`
-          SELECT count(*)::int AS count FROM test."User" WHERE email = ${SENTINEL_EMAIL}`
-      : await prisma.$queryRaw<{ count: number }[]>`
-          SELECT count(*)::int AS count FROM public."User" WHERE email = ${SENTINEL_EMAIL}`;
-
-  return rows[0]?.count ?? 0;
-}
-
 describeWithDatabase('createUserWithDataRoom against a real database', () => {
   let prisma: PrismaClient;
 
   beforeAll(async () => {
-    prisma = new PrismaClient({
-      adapter: new PrismaPg({ connectionString: testDatabaseUrl }, { schema: TEST_SCHEMA }),
-    });
-
-    // These tests truncate tables, so prove the isolation before trusting it.
-    // `current_schema()` is not the check to make: the adapter's `schema`
-    // option qualifies table names in generated queries, it does not move the
-    // session's search_path. What matters is where a model write actually lands.
-    await prisma.user.create({
-      data: { email: SENTINEL_EMAIL, name: 'Probe', passwordHash: 'probe' },
-    });
-
-    const landedInPublic = await countInSchema(prisma, 'public');
-    const landedInTest = await countInSchema(prisma, TEST_SCHEMA);
-
-    await prisma.user.deleteMany({ where: { email: SENTINEL_EMAIL } });
-
-    if (landedInPublic > 0 || landedInTest === 0) {
-      throw new Error(
-        `Model writes are not isolated to the "${TEST_SCHEMA}" schema. Refusing to run destructive tests.`,
-      );
-    }
+    prisma = createTestPrismaClient();
+    await assertSchemaIsolation(prisma);
   });
 
   afterAll(async () => {
@@ -105,12 +59,20 @@ describeWithDatabase('createUserWithDataRoom against a real database', () => {
   });
 
   it('writes into the test schema, never the application schema', async () => {
-    await prisma.user.create({
-      data: { email: SENTINEL_EMAIL, name: 'Probe', passwordHash: 'probe' },
+    // `assertSchemaIsolation` already enforces this before any suite runs; this
+    // states it as a named expectation so the guarantee is visible in the
+    // output rather than buried in setup.
+    await createUserWithDataRoom(prisma, {
+      email: 'isolation@example.com',
+      name: 'Isolation',
+      passwordHash: 'not-a-real-hash',
     });
 
-    await expect(countInSchema(prisma, TEST_SCHEMA)).resolves.toBe(1);
-    await expect(countInSchema(prisma, 'public')).resolves.toBe(0);
+    const inPublic = await prisma.$queryRaw<{ count: number }[]>`
+      SELECT count(*)::int AS count FROM public."User" WHERE email = 'isolation@example.com'`;
+
+    expect(await prisma.user.count()).toBe(1);
+    expect(inPublic[0]?.count).toBe(0);
   });
 
   it('creates the user, the data room and its root folder together', async () => {

@@ -20,6 +20,12 @@ export interface AppEnv {
   readonly jwtSecret: string;
   /** Lifetime of an access token, shared by the JWT and its cookie. */
   readonly jwtExpiresInSeconds: number;
+  /** `https://<ref>.supabase.co` */
+  readonly supabaseUrl: string;
+  /** Server-side only. Bypasses row-level security — never send to a browser. */
+  readonly supabaseServiceRoleKey: string;
+  /** Private bucket holding uploaded documents. */
+  readonly supabaseStorageBucket: string;
 }
 
 /** Short enough to limit a leaked token, long enough not to nag a reviewer. */
@@ -118,6 +124,28 @@ function readJwtLifetime(raw: string | undefined): number {
   return seconds;
 }
 
+function readRequired(name: string, raw: string | undefined): string {
+  const value = (raw ?? '').trim();
+
+  if (value === '') {
+    throw new EnvError(name, 'must be set');
+  }
+
+  return value;
+}
+
+function readSupabaseUrl(raw: string | undefined): string {
+  const value = readRequired('SUPABASE_URL', raw);
+
+  try {
+    new URL(value);
+  } catch {
+    throw new EnvError('SUPABASE_URL', `is not a valid URL: "${value}"`);
+  }
+
+  return value.replace(/\/+$/, '');
+}
+
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
   return {
     nodeEnv: readNodeEnv(source.NODE_ENV),
@@ -126,5 +154,11 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     databaseUrl: readDatabaseUrl(source.DATABASE_URL),
     jwtSecret: readJwtSecret(source.JWT_SECRET),
     jwtExpiresInSeconds: readJwtLifetime(source.JWT_EXPIRES_IN_SECONDS),
+    supabaseUrl: readSupabaseUrl(source.SUPABASE_URL),
+    supabaseServiceRoleKey: readRequired(
+      'SUPABASE_SERVICE_ROLE_KEY',
+      source.SUPABASE_SERVICE_ROLE_KEY,
+    ),
+    supabaseStorageBucket: readRequired('SUPABASE_STORAGE_BUCKET', source.SUPABASE_STORAGE_BUCKET),
   };
 }

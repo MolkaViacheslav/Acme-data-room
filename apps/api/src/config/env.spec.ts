@@ -6,6 +6,9 @@ const validEnv = {
   WEB_ORIGIN: 'https://data-room.vercel.app',
   DATABASE_URL: 'postgresql://user:pw@db.example.com:6543/postgres?pgbouncer=true',
   JWT_SECRET: 's'.repeat(48),
+  SUPABASE_URL: 'https://project.supabase.co',
+  SUPABASE_SERVICE_ROLE_KEY: 'service-role-key',
+  SUPABASE_STORAGE_BUCKET: 'data-room-files',
 } satisfies NodeJS.ProcessEnv;
 
 describe('loadEnv', () => {
@@ -17,18 +20,36 @@ describe('loadEnv', () => {
       databaseUrl: validEnv.DATABASE_URL,
       jwtSecret: validEnv.JWT_SECRET,
       jwtExpiresInSeconds: 7 * 24 * 60 * 60,
+      supabaseUrl: validEnv.SUPABASE_URL,
+      supabaseServiceRoleKey: validEnv.SUPABASE_SERVICE_ROLE_KEY,
+      supabaseStorageBucket: validEnv.SUPABASE_STORAGE_BUCKET,
     });
   });
 
   it('falls back to development defaults', () => {
-    const env = loadEnv({
-      WEB_ORIGIN: 'http://localhost:3000',
-      DATABASE_URL: validEnv.DATABASE_URL,
-      JWT_SECRET: validEnv.JWT_SECRET,
-    });
+    const env = loadEnv({ ...validEnv, NODE_ENV: undefined, PORT: undefined });
 
     expect(env.nodeEnv).toBe('development');
     expect(env.port).toBe(3001);
+  });
+
+  it.each(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_STORAGE_BUCKET'])(
+    'rejects a missing %s',
+    (variable) => {
+      expect(() => loadEnv({ ...validEnv, [variable]: '' })).toThrow(new RegExp(variable));
+    },
+  );
+
+  it('rejects a Supabase URL that is not a URL', () => {
+    expect(() => loadEnv({ ...validEnv, SUPABASE_URL: 'project.supabase.co' })).toThrow(
+      /SUPABASE_URL/,
+    );
+  });
+
+  it('strips a trailing slash from the Supabase URL', () => {
+    expect(loadEnv({ ...validEnv, SUPABASE_URL: 'https://project.supabase.co/' }).supabaseUrl).toBe(
+      'https://project.supabase.co',
+    );
   });
 
   it('splits and trims a multi-origin allowlist', () => {

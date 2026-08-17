@@ -97,3 +97,22 @@ appended to as work proceeds.
 - Shaping the policy as a pure function was a deliberate testability decision
   taken in Phase 2 and honoured here; it is what makes that coverage cheap
   enough to be worth writing.
+
+### Phase 4 — Folders & files API
+
+- The `AccessService`-first rule was restated and agreed before any endpoint was
+  written, and two gaps in the plan were raised rather than filled silently:
+  folder move was missing although Phase 6 depends on it, and the plan's storage
+  operations land in Phase 4 while the storage client was scheduled for Phase 5.
+- Supabase Storage's `createSignedUrl` and `remove` signatures were read from the
+  installed package's type definitions rather than recalled, since the return
+  shape (`{ data, error }` rather than throwing) determines the error handling.
+- Two mistakes were caught by running things rather than by reading them. A
+  character class intended to exclude control characters was written with real
+  control bytes in the source, turning the file binary to `grep` and diffs; it
+  was replaced with a simpler rule that needs no escapes, and covered by tests
+  against the names the seed actually uses. And the two integration suites, run
+  in parallel by default, deleted each other's fixtures — they now run serially.
+- The breadcrumb leak was noticed while designing, not after: `GET /folders/:id`
+  would otherwise have shown a share recipient the names of folders above the
+  one shared with them.

@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -243,6 +243,65 @@ describe('AccessService', () => {
       await expect(service.requireAccess(OWNER, 'FOLDER', 'folder-1')).resolves.toEqual({
         role: 'OWNER',
       });
+    });
+  });
+
+  describe('requireOwner', () => {
+    function shareGrantingViewerAccess() {
+      prisma.folder.findUnique.mockResolvedValue({
+        id: 'folder-1',
+        path: '/root/folder-1/',
+        dataRoomId: 'room-1',
+        dataRoom: { ownerId: OWNER.id },
+      });
+      prisma.share.findMany.mockResolvedValue([
+        {
+          id: 'share-1',
+          dataRoomId: 'room-1',
+          resourceType: 'FOLDER',
+          resourceId: 'folder-1',
+          mode: 'RESTRICTED',
+          role: 'VIEWER',
+          token: null,
+          expiresAt: null,
+          revokedAt: null,
+          recipients: [{ email: INVITEE.email, userId: INVITEE.id }],
+        },
+      ]);
+      prisma.folder.findMany.mockResolvedValue([{ id: 'folder-1', path: '/root/folder-1/' }]);
+    }
+
+    it('lets the owner through', async () => {
+      prisma.folder.findUnique.mockResolvedValue({
+        id: 'folder-1',
+        path: '/root/folder-1/',
+        dataRoomId: 'room-1',
+        dataRoom: { ownerId: OWNER.id },
+      });
+
+      await expect(service.requireOwner(OWNER, 'FOLDER', 'folder-1')).resolves.toBeUndefined();
+    });
+
+    it('answers 403 for a viewer, who already knows the resource exists', async () => {
+      shareGrantingViewerAccess();
+
+      await expect(service.requireOwner(INVITEE, 'FOLDER', 'folder-1')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+
+    it('still answers 404 for someone with no access at all', async () => {
+      // The 403 above must not become a way to probe for resources.
+      prisma.folder.findUnique.mockResolvedValue({
+        id: 'folder-1',
+        path: '/root/folder-1/',
+        dataRoomId: 'room-1',
+        dataRoom: { ownerId: OWNER.id },
+      });
+
+      await expect(service.requireOwner(STRANGER, 'FOLDER', 'folder-1')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 });

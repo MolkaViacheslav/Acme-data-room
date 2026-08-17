@@ -1,3 +1,5 @@
+import { isPathAncestorOrSelf } from '../shared/materialized-path';
+
 import type {
   AccessActor,
   AccessDecision,
@@ -79,24 +81,6 @@ function shareCoversResource(share: ShareCandidate, resource: ResourceLocator): 
     case 'FILE':
       return resource.type === 'FILE' && share.resourceId === resource.id;
   }
-}
-
-/**
- * Prefix match over materialized paths.
- *
- * Both paths must be `/<id>/<id>/…/` — bounded by slashes at both ends. That
- * trailing slash is the entire safety property: without it `/root/ab` would
- * match `/root/abc/` and leak a sibling subtree. A path that does not have it
- * is treated as malformed and matches nothing, rather than being repaired.
- */
-function isPathAncestorOrSelf(ancestorPath: string, descendantPath: string): boolean {
-  if (!isWellFormedPath(ancestorPath) || !isWellFormedPath(descendantPath)) return false;
-
-  return descendantPath.startsWith(ancestorPath);
-}
-
-function isWellFormedPath(path: string): boolean {
-  return path.startsWith('/') && path.endsWith('/') && path.length > 1;
 }
 
 interface ShareContext {

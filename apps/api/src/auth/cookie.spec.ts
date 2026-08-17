@@ -9,6 +9,9 @@ const baseEnv: AppEnv = {
   databaseUrl: 'postgresql://localhost:6543/postgres',
   jwtSecret: 'x'.repeat(32),
   jwtExpiresInSeconds: 3600,
+  supabaseUrl: 'https://project.supabase.co',
+  supabaseServiceRoleKey: 'service-role-key',
+  supabaseStorageBucket: 'data-room-files',
 };
 
 describe('accessTokenCookieOptions', () => {

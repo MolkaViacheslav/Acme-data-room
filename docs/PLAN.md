@@ -116,23 +116,29 @@ VIEWER | NONE }`. Resolution order:
 ## Phase 4 — Folders & files API (~2h)
 
 Folders:
-- [ ] `POST /folders` — `{ name, parentId }`; computes `path`; 409 on duplicate name
-- [ ] `GET /folders/:id` — metadata + breadcrumb chain (derived from `path`)
-- [ ] `GET /folders/:id/children` — subfolders + files, cursor-paginated,
+- [x] `POST /folders` — `{ name, parentId }`; computes `path`; 409 on duplicate name
+- [x] `GET /folders/:id` — metadata + breadcrumb chain (derived from `path`)
+- [x] `GET /folders/:id/children` — subfolders + files, cursor-paginated,
       sortable by name / size / updatedAt
-- [ ] `PATCH /folders/:id` — rename; 409 on conflict
-- [ ] `GET /folders/:id/delete-preview` — `{ folderCount, fileCount, totalBytes }`
+- [x] `PATCH /folders/:id` — rename; 409 on conflict
+- [x] `PATCH /folders/:id/move` — `{ parentId }`; recomputes the subtree's paths.
+      Added during Phase 4: Phase 6 requires it and the plan omitted it.
+- [x] `GET /folders/:id/delete-preview` — `{ folderCount, fileCount, totalBytes }`
       from a single prefix-aggregate query. Powers the delete warning dialog.
-- [ ] `DELETE /folders/:id` — deletes subtree in one transaction, then removes
+      (Two aggregates in practice — files carry no path of their own.)
+- [x] `DELETE /folders/:id` — deletes subtree in one transaction, then removes
       the storage objects. Storage cleanup failure must not roll back the DB —
       log it and move on.
 
 Files:
-- [ ] `PATCH /files/:id` — rename; 409 on conflict, with a suggested
+- [x] `PATCH /files/:id` — rename; 409 on conflict, with a suggested
       `"report (2).pdf"` name in the error payload
-- [ ] `PATCH /files/:id/move` — `{ folderId }`; 409 on name conflict in target
-- [ ] `DELETE /files/:id` — DB row, then storage object
-- [ ] `GET /files/:id/download-url` — short-TTL signed URL, access-checked
+- [x] `PATCH /files/:id/move` — `{ folderId }`; 409 on name conflict in target
+- [x] `DELETE /files/:id` — DB row, then storage object
+- [x] `GET /files/:id/download-url` — short-TTL signed URL, access-checked
+
+File endpoints are covered by unit and integration tests only until Phase 5
+produces real uploaded rows to exercise them end to end.
 
 ---
 

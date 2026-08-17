@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
 
 import type {
   AccessActor,
   AccessDecision,
+  GrantedAccess,
   ResourceLocator,
   ShareCandidate,
   ShareResourceType,
@@ -74,7 +75,7 @@ export class AccessService {
     resourceType: ShareResourceType,
     resourceId: string,
     options: ResolveAccessOptions = {},
-  ): Promise<AccessDecision> {
+  ): Promise<GrantedAccess> {
     const decision = await this.resolveAccess(actor, resourceType, resourceId, options);
 
     if (decision.role === 'NONE') {
@@ -82,6 +83,28 @@ export class AccessService {
     }
 
     return decision;
+  }
+
+  /**
+   * The threshold for anything that writes. Only the data room's owner may
+   * create, rename, move or delete; every share is read-only today.
+   *
+   * Unlike `requireAccess` this answers 403, not 404 — a viewer who can already
+   * read the resource plainly knows it exists, so hiding it would only be
+   * confusing. The 404 rule protects actors who should not know at all, and
+   * `requireAccess` has already applied it before we get here.
+   */
+  async requireOwner(
+    actor: AccessActor | null,
+    resourceType: ShareResourceType,
+    resourceId: string,
+    options: ResolveAccessOptions = {},
+  ): Promise<void> {
+    const decision = await this.requireAccess(actor, resourceType, resourceId, options);
+
+    if (decision.role !== 'OWNER') {
+      throw new ForbiddenException('You have read-only access to this item.');
+    }
   }
 
   private async locateResource(

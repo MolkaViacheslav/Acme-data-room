@@ -75,7 +75,9 @@ export type DenialReason =
   | 'TOKEN_MISMATCH'
   | 'NOT_A_RECIPIENT';
 
+/** A decision that let the caller through. */
+export type GrantedAccess =
+  { readonly role: 'OWNER' } | { readonly role: 'VIEWER'; readonly viaShareId: string };
+
 export type AccessDecision =
-  | { readonly role: 'OWNER' }
-  | { readonly role: 'VIEWER'; readonly viaShareId: string }
-  | { readonly role: 'NONE'; readonly reason: DenialReason };
+  GrantedAccess | { readonly role: 'NONE'; readonly reason: DenialReason };

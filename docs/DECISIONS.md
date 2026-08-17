@@ -194,3 +194,53 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
   room as well as by id.** `Share` is polymorphic and has no foreign key to
   join through. The extra `dataRoomId` filter stops a share from importing a
   path belonging to another room's folder.
+
+## Phase 4 — Folders & files API
+
+- **`AccessService.requireOwner` is the single write threshold.** Every mutation
+  calls it rather than testing `decision.role` inline, so "who may write" stays
+  one rule in one file. It answers **403**, not 404: a viewer can already read
+  the resource, so hiding it would only confuse. The 404 rule protects actors
+  who should not know the resource exists, and `requireAccess` has applied it
+  before `requireOwner` is reached.
+- **Endpoints taking two client-supplied ids resolve access twice.** `move`
+  checks the thing being moved *and* the destination. Checking only the first
+  would let anyone drop their own file into someone else's folder.
+- **The materialized-path rule now lives in one module.** `decideAccess` used to
+  carry its own copy of the prefix check; `shared/materialized-path.ts` is now
+  the only definition, used by both the security boundary and the folder logic.
+  Duplicating a rule whose trailing slash prevents a subtree leak was the wrong
+  kind of independence.
+- **Breadcrumbs are truncated to what the caller may know.** A recipient of a
+  share on a nested folder sees the chain from that folder down; the names of
+  folders above it are not theirs. Costs one extra query for viewers only.
+  The plan asked for a breadcrumb "derived from path" and did not mention this,
+  but shipping the untruncated version would leak folder names in Phase 7.
+- **Children are listed folders-first behind a single cursor.** They live in two
+  tables, and keyset pagination cannot span both without raw SQL. Ordering
+  folders ahead of files makes each page one indexed keyset query against one
+  table. Traded away: sorting by size cannot interleave folders with files, so
+  folders keep name order under that sort.
+- **Keyset pagination, never OFFSET.** Offset re-reads and discards every skipped
+  row, so deep pages cost proportionally more. The cursor carries the sort value
+  plus the row id as a tiebreaker, which keeps the ordering total.
+- **A malformed cursor is a 400, not a crash or a silent first page.** It is a
+  position, not a permission — tampering can only produce a wrong page.
+- **The root folder cannot be renamed, moved or deleted.** It represents the data
+  room: deleting it would leave `DataRoom.rootFolderId` null, which
+  `AccessService` already treats as an unusable room. Refusing outright beats
+  supporting it halfway.
+- **Subtree paths are rewritten with one `update` per row inside a transaction.**
+  A single `UPDATE … SET path = replace(...)` would be one round trip instead of
+  N, but the plan restricts raw SQL to subtree *queries*. Traded away: moving a
+  folder with thousands of descendants is slower than it needs to be. Worth
+  revisiting if the numbers ever justify it.
+- **Storage cleanup runs after the database work and never fails the request.**
+  An orphaned object costs storage; a rolled-back delete costs correctness. The
+  keys are collected before the cascade removes the rows that name them.
+- **Conflicts answer 409 with a suggested free name.** The plan asked for this on
+  file rename only; folders got it too, because the client can then offer
+  "rename to Legal (2)" instead of making the user guess.
+- **Integration suites run serially.** Two of them share one test schema, and in
+  parallel each one's cleanup deleted the other's fixtures. `maxWorkers: 1` in
+  the integration Jest config.
