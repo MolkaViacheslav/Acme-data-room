@@ -60,3 +60,25 @@ appended to as work proceeds.
 - The seed was run twice to confirm it is idempotent, and the resulting tree was
   read back to confirm the materialized paths and the single-query subtree
   prefix lookup behave as the schema intends.
+
+### Phase 2 — Auth
+
+- The testing strategy was decided before any code was written, by measuring
+  rather than guessing: a throwaway spec established that Jest can drive the
+  real Prisma 7 client under `--experimental-vm-modules`, including rolling a
+  transaction back. That turned "can we integration-test this?" from an opinion
+  into a fact, and the answer shaped the split between mocked unit tests and a
+  real-database suite.
+- Every endpoint was exercised over HTTP with cookies before the phase was
+  considered done: registration, `me` with and without a cookie, duplicate
+  email, wrong password, unknown email, rejected payloads, and logout.
+- That manual pass caught a real bug the test suite had hidden. Logging in as
+  the seeded demo account returned 401, because the integration suite had
+  deleted it: `?schema=test` in the connection string is a Prisma CLI
+  convention that the `pg` driver behind the adapter ignores, so the
+  "isolated" suite had been truncating the application schema. The fix passes
+  the schema to the adapter explicitly, and the suite now proves its own
+  isolation with a sentinel row before it will run anything destructive.
+- One item in the plan turned out to be impossible as written — middleware
+  cannot read a cookie scoped to another origin — and was recorded under "Open
+  questions" with the reasoning, rather than quietly substituted.

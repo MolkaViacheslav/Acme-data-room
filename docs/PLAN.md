@@ -76,15 +76,17 @@ deliberately:
 
 ## Phase 2 — Auth (~2h)
 
-- [ ] `POST /auth/register` — email, password (min 8), name. bcrypt hash.
-- [ ] `POST /auth/login` — sets `access_token` httpOnly cookie
-- [ ] `POST /auth/logout` — clears cookie
-- [ ] `GET /auth/me` — current user or 401
-- [ ] `JwtAuthGuard` global; `@Public()` decorator to opt out
-- [ ] On register: auto-create the user's DataRoom + its root Folder in one
+- [x] `POST /auth/register` — email, password (min 8), name. bcrypt hash.
+- [x] `POST /auth/login` — sets `access_token` httpOnly cookie
+- [x] `POST /auth/logout` — clears cookie
+- [x] `GET /auth/me` — current user or 401
+- [x] `JwtAuthGuard` global; `@Public()` decorator to opt out
+- [x] On register: auto-create the user's DataRoom + its root Folder in one
       transaction
-- [ ] Frontend: `/login`, `/register` pages with inline field validation
-- [ ] Frontend: middleware redirecting unauthenticated users to `/login`
+- [x] Frontend: `/login`, `/register` pages with inline field validation
+- [ ] ~~Frontend: middleware redirecting unauthenticated users to `/login`~~ —
+      not possible in this deployment; done client-side instead. See "Open
+      questions".
 - [ ] Verified: refresh the deployed frontend, session persists
 
 ---
@@ -236,3 +238,20 @@ Direct browser → Supabase Storage. The file never passes through Railway.
 ## Open questions
 
 _(Claude Code: append here instead of expanding scope silently.)_
+
+**Auth cannot be checked in `middleware.ts` (Phase 2).** The plan asks for
+middleware that redirects unauthenticated visitors to `/login`. That cannot
+work in this deployment: the `access_token` cookie belongs to the API's origin
+(`*.railway.app`), so neither Next middleware nor a Server Component running on
+Vercel can read it — only the browser can, and only by calling the API. The
+redirect is therefore done client-side, from the session query. The visible
+behaviour is the same; the difference is that the guard runs after hydration
+rather than at the edge, so a protected route briefly shows its loading
+skeleton. Making middleware work would mean proxying the API through Next so
+the cookie becomes same-site, which changes the deployment topology — flagged
+rather than done.
+
+**Integration tests were added beyond the plan (Phase 2).** `pnpm test:int`
+exercises the registration transaction against a real `test` schema. Approved
+explicitly before implementation; the suite skips itself when
+`TEST_DATABASE_URL` is unset, so it never blocks a reviewer.

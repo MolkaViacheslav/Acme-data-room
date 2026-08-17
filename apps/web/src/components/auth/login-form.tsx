@@ -1,0 +1,85 @@
+'use client';
+
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { toast } from 'sonner';
+
+import { FormField } from '@/components/auth/form-field';
+import { SubmitButton } from '@/components/auth/submit-button';
+import { login } from '@/lib/api/auth';
+import { describeError } from '@/lib/api/client';
+import type { AuthUser, LoginRequest } from '@/lib/api/types';
+import { SESSION_QUERY_KEY } from '@/lib/auth/use-session';
+import { type FieldErrors, hasErrors, validateLoginForm } from '@/lib/auth/validation';
+
+const EMPTY: LoginRequest = { email: '', password: '' };
+
+export function LoginForm() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  const [values, setValues] = useState<LoginRequest>(EMPTY);
+  const [errors, setErrors] = useState<FieldErrors<LoginRequest>>({});
+
+  const mutation = useMutation({
+    mutationFn: login,
+    onSuccess: (user: AuthUser) => {
+      // Seed the cache so the landing page renders without a second round trip.
+      queryClient.setQueryData(SESSION_QUERY_KEY, user);
+      toast.success(`Welcome back, ${user.name}.`);
+      router.replace('/');
+    },
+    onError: (error: unknown) => {
+      toast.error(describeError(error));
+    },
+  });
+
+  function update(field: keyof LoginRequest, value: string): void {
+    setValues((current) => ({ ...current, [field]: value }));
+    // Clear the field's error as soon as the user starts fixing it.
+    setErrors((current) => ({ ...current, [field]: undefined }));
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+
+    const nextErrors = validateLoginForm(values);
+    setErrors(nextErrors);
+
+    if (hasErrors(nextErrors)) return;
+
+    mutation.mutate({ email: values.email.trim(), password: values.password });
+  }
+
+  return (
+    <form onSubmit={handleSubmit} noValidate className="grid gap-4">
+      <FormField
+        label="Email"
+        name="email"
+        type="email"
+        autoComplete="email"
+        placeholder="you@example.com"
+        value={values.email}
+        error={errors.email}
+        disabled={mutation.isPending}
+        onChange={(event) => update('email', event.target.value)}
+      />
+
+      <FormField
+        label="Password"
+        name="password"
+        type="password"
+        autoComplete="current-password"
+        value={values.password}
+        error={errors.password}
+        disabled={mutation.isPending}
+        onChange={(event) => update('password', event.target.value)}
+      />
+
+      <SubmitButton pending={mutation.isPending} pendingLabel="Signing in…">
+        Sign in
+      </SubmitButton>
+    </form>
+  );
+}

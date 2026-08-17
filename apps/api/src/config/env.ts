@@ -16,7 +16,17 @@ export interface AppEnv {
    * use the direct connection instead, configured in `prisma.config.ts`.
    */
   readonly databaseUrl: string;
+  /** Signing key for access tokens. */
+  readonly jwtSecret: string;
+  /** Lifetime of an access token, shared by the JWT and its cookie. */
+  readonly jwtExpiresInSeconds: number;
 }
+
+/** Short enough to limit a leaked token, long enough not to nag a reviewer. */
+const DEFAULT_JWT_LIFETIME_SECONDS = 7 * 24 * 60 * 60;
+
+/** Rejects the kind of placeholder secret people paste in to "try it out". */
+const MIN_JWT_SECRET_LENGTH = 32;
 
 class EnvError extends Error {
   constructor(variable: string, problem: string) {
@@ -81,11 +91,40 @@ function readDatabaseUrl(raw: string | undefined): string {
   return url;
 }
 
+function readJwtSecret(raw: string | undefined): string {
+  const secret = (raw ?? '').trim();
+
+  if (secret === '') {
+    throw new EnvError('JWT_SECRET', 'must be set');
+  }
+  if (secret.length < MIN_JWT_SECRET_LENGTH) {
+    throw new EnvError(
+      'JWT_SECRET',
+      `must be at least ${MIN_JWT_SECRET_LENGTH} characters (got ${secret.length})`,
+    );
+  }
+
+  return secret;
+}
+
+function readJwtLifetime(raw: string | undefined): number {
+  if (raw === undefined || raw === '') return DEFAULT_JWT_LIFETIME_SECONDS;
+
+  const seconds = Number(raw);
+  if (!Number.isInteger(seconds) || seconds <= 0) {
+    throw new EnvError('JWT_EXPIRES_IN_SECONDS', `must be a positive integer (got "${raw}")`);
+  }
+
+  return seconds;
+}
+
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
   return {
     nodeEnv: readNodeEnv(source.NODE_ENV),
     port: readPort(source.PORT),
     corsOrigins: readCorsOrigins(source.WEB_ORIGIN),
     databaseUrl: readDatabaseUrl(source.DATABASE_URL),
+    jwtSecret: readJwtSecret(source.JWT_SECRET),
+    jwtExpiresInSeconds: readJwtLifetime(source.JWT_EXPIRES_IN_SECONDS),
   };
 }

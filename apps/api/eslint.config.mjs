@@ -31,6 +31,12 @@ export default tseslint.config(
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-unsafe-argument': 'error',
+      // A leading underscore marks something deliberately discarded, such as a
+      // key removed by rest-destructuring.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
       'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },

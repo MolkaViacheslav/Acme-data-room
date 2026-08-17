@@ -66,5 +66,16 @@ whether the connection works.
 pnpm typecheck
 pnpm build
 pnpm lint
-pnpm --filter @acme/api test
+
+pnpm --filter @acme/api test        # unit — no database needed
+pnpm --filter @acme/api test:e2e    # HTTP layer, Prisma stubbed
+pnpm --filter @acme/api test:int    # real database; skips itself without
+                                    # TEST_DATABASE_URL
+```
+
+To run the integration suite, set `TEST_DATABASE_URL` (see
+`apps/api/.env.example`) and apply migrations to that schema once:
+
+```bash
+pnpm --filter @acme/api db:migrate:test
 ```

@@ -5,6 +5,7 @@ const validEnv = {
   PORT: '4000',
   WEB_ORIGIN: 'https://data-room.vercel.app',
   DATABASE_URL: 'postgresql://user:pw@db.example.com:6543/postgres?pgbouncer=true',
+  JWT_SECRET: 's'.repeat(48),
 } satisfies NodeJS.ProcessEnv;
 
 describe('loadEnv', () => {
@@ -14,6 +15,8 @@ describe('loadEnv', () => {
       port: 4000,
       corsOrigins: ['https://data-room.vercel.app'],
       databaseUrl: validEnv.DATABASE_URL,
+      jwtSecret: validEnv.JWT_SECRET,
+      jwtExpiresInSeconds: 7 * 24 * 60 * 60,
     });
   });
 
@@ -21,6 +24,7 @@ describe('loadEnv', () => {
     const env = loadEnv({
       WEB_ORIGIN: 'http://localhost:3000',
       DATABASE_URL: validEnv.DATABASE_URL,
+      JWT_SECRET: validEnv.JWT_SECRET,
     });
 
     expect(env.nodeEnv).toBe('development');
@@ -61,6 +65,24 @@ describe('loadEnv', () => {
   it('rejects a database url that is not postgres', () => {
     expect(() => loadEnv({ ...validEnv, DATABASE_URL: 'mysql://user:pw@host/db' })).toThrow(
       /DATABASE_URL/,
+    );
+  });
+
+  it('rejects a missing jwt secret', () => {
+    expect(() => loadEnv({ ...validEnv, JWT_SECRET: '' })).toThrow(/JWT_SECRET/);
+  });
+
+  it('rejects a jwt secret short enough to brute force', () => {
+    expect(() => loadEnv({ ...validEnv, JWT_SECRET: 'secret' })).toThrow(/JWT_SECRET/);
+  });
+
+  it('accepts an explicit token lifetime', () => {
+    expect(loadEnv({ ...validEnv, JWT_EXPIRES_IN_SECONDS: '3600' }).jwtExpiresInSeconds).toBe(3600);
+  });
+
+  it('rejects a non-numeric token lifetime', () => {
+    expect(() => loadEnv({ ...validEnv, JWT_EXPIRES_IN_SECONDS: 'a week' })).toThrow(
+      /JWT_EXPIRES_IN_SECONDS/,
     );
   });
 });

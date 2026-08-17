@@ -102,3 +102,49 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
 - **The seed deletes and recreates only the demo account.** Re-running it is
   safe and leaves any other data alone. Traded away preserving demo data
   between runs.
+
+## Phase 2 — Auth
+
+- **A hand-written `JwtAuthGuard` rather than Passport.** The token arrives in a
+  cookie, not an `Authorization` header, so `passport-jwt`'s extractors buy
+  nothing here — three dependencies replaced by forty lines that are fully
+  typed. Traded away the familiarity of a standard strategy.
+- **The guard is global; routes opt out with `@Public()`.** A new endpoint is
+  protected because someone did nothing, rather than unprotected because
+  someone forgot a decorator. Traded away nothing.
+- **Cookie attributes live in one file, `auth/cookie.ts`.** They are the part
+  of auth most likely to need changing — the plan's own fallback is to abandon
+  cookies for a bearer token if Safari blocks them — so they should be one
+  edit, not a search across the codebase.
+- **`SameSite=None; Secure` in production, `Lax` locally.** Vercel and Railway
+  are different sites, and browsers only accept `SameSite=None` together with
+  `Secure`. Locally both apps are on `localhost`, which is same-site regardless
+  of port, and `Secure` would break plain HTTP. Traded away a single
+  configuration for both environments.
+- **`app.set('trust proxy', 1)`.** Railway terminates TLS ahead of the app, so
+  without it Express sees plain HTTP and silently declines to set a `Secure`
+  cookie.
+- **Login answers identically for an unknown email and a wrong password, and
+  hashes a dummy value when no user matched.** Otherwise both the message and
+  the response time would reveal which addresses are registered.
+- **Registration relies on the unique index, not a pre-check.** Two
+  simultaneous registrations both pass a `findUnique` guard; only the
+  constraint actually decides. The `P2002` error is translated into a 409.
+- **`/auth/me` returns the user's data room alongside the user.** The landing
+  page needs both, and inventing a second endpoint for one name would be worse.
+  Traded away a strictly minimal auth payload.
+- **The session is resolved client-side, and there is no `middleware.ts`.** The
+  auth cookie belongs to the API's origin, so nothing running on Vercel can
+  read it. See "Open questions" in `PLAN.md`. Traded away an edge-side
+  redirect: a protected route shows its skeleton for one round trip first.
+- **Environment is parsed once into an injected `APP_ENV` provider.** The
+  previous shape re-read and re-validated `process.env` on every request that
+  needed a cookie option. Traded away the ability to change configuration
+  without a restart, which is not something we want anyway.
+- **Integration tests address the test schema through the adapter's `schema`
+  option, not `?schema=` in the URL.** `?schema=` is a Prisma CLI convention;
+  the `pg` driver behind the adapter ignores unknown query parameters. Getting
+  this wrong pointed the destructive suite at `public` and deleted the seeded
+  demo account, so the suite now proves its own isolation before it will run:
+  it writes a sentinel row and refuses to continue unless that row landed in
+  the test schema and nowhere else. Traded away a shorter setup.
