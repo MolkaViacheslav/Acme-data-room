@@ -116,3 +116,19 @@ appended to as work proceeds.
 - The breadcrumb leak was noticed while designing, not after: `GET /folders/:id`
   would otherwise have shown a share recipient the names of folders above the
   one shared with them.
+
+### Phase 5 — Upload
+
+- The Supabase CORS question was settled before any UI was written, by signing a
+  real upload URL and sending it a preflight plus a `PUT` from a script: the
+  bucket already allows browser uploads, so no dashboard change was needed. The
+  same probe confirmed `info()` returns the size and content type that the
+  `complete` step depends on.
+- The upload round trip is covered by integration tests against the real bucket
+  rather than mocks, because the questions that matter — does a signed URL
+  accept a browser `PUT`, and does storage report what was actually stored —
+  cannot be answered by a stub. Ten tests, including the fake-PDF case.
+- Two problems were raised before implementation rather than discovered after:
+  that the size and type limits are unenforceable at the signed URL and must be
+  checked again on completion, and that abandoned `PENDING` rows would hold
+  their name against a retry while being invisible to the user.

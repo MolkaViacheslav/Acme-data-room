@@ -8,20 +8,39 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Post,
   Query,
 } from '@nestjs/common';
 
 import type { AccessActor } from '../access/access.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 
+import { CreateUploadUrlDto } from './dto/create-upload-url.dto';
 import { MoveFileDto } from './dto/move-file.dto';
 import { RenameFileDto } from './dto/rename-file.dto';
 import { FilesService } from './files.service';
-import type { DownloadUrl, FileDetail } from './files.types';
+import type { DownloadUrl, FileDetail, UploadTarget } from './files.types';
 
 @Controller('files')
 export class FilesController {
   constructor(private readonly files: FilesService) {}
+
+  @Post('upload-url')
+  createUploadUrl(
+    @CurrentUser() actor: AccessActor,
+    @Body() dto: CreateUploadUrlDto,
+  ): Promise<UploadTarget> {
+    return this.files.createUploadUrl(actor, dto);
+  }
+
+  @Post(':id/complete')
+  @HttpCode(HttpStatus.OK)
+  completeUpload(
+    @CurrentUser() actor: AccessActor,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<FileDetail> {
+    return this.files.completeUpload(actor, id);
+  }
 
   @Patch(':id')
   rename(

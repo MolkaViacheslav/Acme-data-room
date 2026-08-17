@@ -124,6 +124,14 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
 - **`app.set('trust proxy', 1)`.** Railway terminates TLS ahead of the app, so
   without it Express sees plain HTTP and silently declines to set a `Secure`
   cookie.
+- **The cross-site cookie was verified in a browser, and the bearer-token
+  fallback was not needed.** This was the risk the plan called out: Vercel and
+  Railway are different sites, and Safari's Intelligent Tracking Prevention was
+  the specific worry. Signing in and reloading kept the session in both Chrome
+  and Safari with cross-site tracking prevention left on, so the plan's fallback
+  — a bearer token held in memory plus a refresh endpoint — was not
+  implemented. `auth/cookie.ts` still isolates the attributes, so adopting the
+  fallback later would be one file.
 - **Login answers identically for an unknown email and a wrong password, and
   hashes a dummy value when no user matched.** Otherwise both the message and
   the response time would reveal which addresses are registered.
@@ -244,3 +252,39 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
 - **Integration suites run serially.** Two of them share one test schema, and in
   parallel each one's cleanup deleted the other's fixtures. `maxWorkers: 1` in
   the integration Jest config.
+
+## Phase 5 — Upload
+
+- **The browser uploads straight to Supabase Storage; the bytes never reach
+  Railway.** The API only signs a URL. A 50 MB file would otherwise occupy a
+  request slot on a small container for the length of the transfer.
+- **No Supabase SDK, and no Supabase key, in the browser.** The signed URL comes
+  from our own API with the token already embedded, so the frontend does a plain
+  `PUT` to a URL it was handed. One fewer credential to think about.
+- **`XMLHttpRequest`, not `fetch`.** `fetch` cannot report upload progress —
+  there is no request-body stream to observe — so a progress bar over it would
+  be an animation, not a measurement. Traded away: a little more ceremony
+  around cancellation, which `AbortSignal` still drives.
+- **Limits are enforced against what storage reports, not what the client
+  claimed.** A signed upload URL constrains neither size nor content type, so
+  the declared values are only a fast-fail courtesy. `complete` reads the
+  object's real size and type, records those, and deletes both row and object on
+  a mismatch. This is load-bearing rather than tidy: Phase 6 renders these files
+  in an iframe, so a file labelled PDF that is actually HTML would be an XSS
+  vector. Proved with a test that uploads `<script>alert(1)</script>` through a
+  URL signed for a PDF and asserts the object is gone afterwards.
+- **An abandoned `PENDING` row is reused rather than collided with.** The unique
+  constraint is `(folderId, name)` regardless of status, so a failed upload of
+  `report.pdf` would otherwise make every retry conflict with a row that no
+  listing shows and no user can delete. Recorded under "Open questions" that a
+  production system would also sweep these on a schedule.
+- **A name conflict is resolved server-side instead of answered with a 409.**
+  Dropping ten files should not stop on the one that clashes; the response says
+  which name was actually taken, and the queue shows "uploaded as report (2).pdf"
+  when it differs.
+- **Cancelling deletes the reserved row.** Otherwise the cancelled name would
+  stay taken by an invisible row — the same trap as above, reached a different
+  way.
+- **The upload panel takes `folderId` as a prop and nothing else.** It sits on
+  the temporary landing page today and moves into the explorer in Phase 6
+  without changes.

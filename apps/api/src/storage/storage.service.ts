@@ -10,6 +10,12 @@ import { APP_ENV } from '../config/env.module';
  */
 export const DOWNLOAD_URL_TTL_SECONDS = 60;
 
+/** What storage reports about an object that is actually there. */
+export interface StoredObject {
+  readonly sizeBytes: number;
+  readonly contentType: string;
+}
+
 /**
  * Everything this app does with Supabase Storage.
  *
@@ -46,6 +52,43 @@ export class StorageService {
     }
 
     return data.signedUrl;
+  }
+
+  /**
+   * A URL the browser can `PUT` the file straight to, so the bytes never pass
+   * through this server.
+   *
+   * The token is already embedded in the returned URL: the browser needs no
+   * Supabase credentials of any kind. `upsert` is on so that retrying a failed
+   * upload writes over the half-finished object instead of failing.
+   */
+  async createSignedUploadUrl(storageKey: string): Promise<string> {
+    const { data, error } = await this.client.storage
+      .from(this.bucket)
+      .createSignedUploadUrl(storageKey, { upsert: true });
+
+    if (error !== null) {
+      throw new Error(`Could not sign an upload URL for ${storageKey}: ${error.message}`);
+    }
+
+    return data.signedUrl;
+  }
+
+  /**
+   * What is actually stored, as opposed to what the client claimed.
+   *
+   * Returns `null` when the object is not there — which is how an upload that
+   * never finished is told apart from one that did.
+   */
+  async getObjectInfo(storageKey: string): Promise<StoredObject | null> {
+    const { data, error } = await this.client.storage.from(this.bucket).info(storageKey);
+
+    if (error !== null) return null;
+
+    return {
+      sizeBytes: data.size ?? 0,
+      contentType: data.contentType ?? '',
+    };
   }
 
   /**

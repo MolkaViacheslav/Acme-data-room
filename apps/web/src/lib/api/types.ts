@@ -23,6 +23,33 @@ export interface LoginRequest {
   readonly password: string;
 }
 
+/** `POST /files/upload-url` */
+export interface CreateUploadUrlRequest {
+  readonly folderId: string;
+  readonly name: string;
+  readonly mimeType: string;
+  readonly sizeBytes: number;
+}
+
+export interface UploadTarget {
+  readonly fileId: string;
+  /** The name actually taken — may differ from the one requested. */
+  readonly name: string;
+  readonly uploadUrl: string;
+}
+
+/** Returned by `POST /files/:id/complete`. */
+export interface FileDetail {
+  readonly id: string;
+  readonly name: string;
+  readonly folderId: string;
+  readonly dataRoomId: string;
+  readonly mimeType: string;
+  readonly sizeBytes: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
 /** Returned by `register`, `login` and `GET /auth/me`. */
 export interface AuthUser {
   readonly id: string;

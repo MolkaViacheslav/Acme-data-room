@@ -87,7 +87,8 @@ deliberately:
 - [ ] ~~Frontend: middleware redirecting unauthenticated users to `/login`~~ —
       not possible in this deployment; done client-side instead. See "Open
       questions".
-- [ ] Verified: refresh the deployed frontend, session persists
+- [x] Verified: refresh the deployed frontend, session persists — checked by
+      hand in Chrome and Safari against the deployed stack
 
 ---
 
@@ -146,19 +147,22 @@ produces real uploaded rows to exercise them end to end.
 
 Direct browser → Supabase Storage. The file never passes through Railway.
 
-- [ ] `POST /files/upload-url` — `{ folderId, name, mimeType, sizeBytes }`.
+- [x] `POST /files/upload-url` — `{ folderId, name, mimeType, sizeBytes }`.
       Validates access, resolves the name conflict, enforces limits
       (PDF only, max 50 MB), creates a `File` row with `uploadStatus: PENDING`
       and a `storageKey` of `<dataRoomId>/<fileId>.pdf`, returns a signed
-      upload URL.
-- [ ] `POST /files/:id/complete` — verifies the object exists in storage and
+      upload URL. Reuses an abandoned `PENDING` row for the same name rather
+      than colliding with a row nobody can see.
+- [x] `POST /files/:id/complete` — verifies the object exists in storage and
       flips `uploadStatus` to `READY`. Files stuck in `PENDING` are never listed.
-- [ ] Frontend upload queue: drag-and-drop zone + file picker, multiple files,
+      Records the size and content type storage reports, not the ones declared,
+      and deletes both row and object when they break the limits.
+- [x] Frontend upload queue: drag-and-drop zone + file picker, multiple files,
       per-file progress bar, per-file cancel, per-file retry on failure
-- [ ] Progress requires `XMLHttpRequest` (`upload.onprogress`) — `fetch` cannot
+- [x] Progress requires `XMLHttpRequest` (`upload.onprogress`) — `fetch` cannot
       report upload progress. Verify the exact Supabase signed-upload request
       contract in current docs before wiring this.
-- [ ] Rejected files (wrong type, too large) show inline in the queue with the
+- [x] Rejected files (wrong type, too large) show inline in the queue with the
       reason; they do not block the others
 
 ---
@@ -256,6 +260,13 @@ rather than at the edge, so a protected route briefly shows its loading
 skeleton. Making middleware work would mean proxying the API through Next so
 the cookie becomes same-site, which changes the deployment topology — flagged
 rather than done.
+
+**Abandoned `PENDING` file rows are reused, not swept (Phase 5).** An upload
+that is cancelled or never confirmed leaves a `PENDING` row. It is invisible in
+every listing, and a retry of the same name reuses it, so it causes no harm the
+user can see. It does still occupy a row and, if the bytes arrived, an object.
+A production system would reconcile these on a schedule — find `PENDING` rows
+older than an hour, delete row and object — which is out of scope here.
 
 **Integration tests were added beyond the plan (Phase 2).** `pnpm test:int`
 exercises the registration transaction against a real `test` schema. Approved
