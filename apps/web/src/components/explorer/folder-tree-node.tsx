@@ -34,6 +34,9 @@ export function FolderTreeNode({
     queryKey: ['folder', id, 'tree-children'],
     queryFn: () => fetchFolderChildren(id, { sort: 'name', direction: 'asc', limit: 200 }),
     enabled: expanded,
+    // Reopening the move dialog, or collapsing and expanding a branch, should
+    // not pay for the same request again.
+    staleTime: 60_000,
   });
 
   // A folder cannot be moved into itself or anywhere beneath itself. The tree

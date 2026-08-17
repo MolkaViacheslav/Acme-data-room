@@ -51,7 +51,8 @@ export function ExplorerView({ folderId }: { folderId: string }) {
 
     params.set('sort', field);
     params.set('dir', nextDirection);
-    router.replace(`/d/${folderId}?${params.toString()}`, { scroll: false });
+    // `push`, not `replace`: sorting is a step the Back button should undo.
+    router.push(`/d/${folderId}?${params.toString()}`, { scroll: false });
   }
 
   function openEntry(entry: ChildEntry): void {

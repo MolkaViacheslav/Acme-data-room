@@ -329,3 +329,20 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
   likely expired than useful; reopening asks for a fresh one.
 - **The viewer takes a file id and nothing else**, like the upload panel before
   it, so Phase 7 can drop it onto a shared-file page unchanged.
+- **Sorting uses `push`, not `replace`.** The first implementation replaced the
+  history entry, so the Back button never became available — the opposite of
+  the reason for putting sort in the URL at all. Each sort is now a step Back
+  can undo.
+- **The sign-in page waits for the session before rendering its form.** It used
+  to render immediately and redirect once the session resolved, which showed
+  anyone already signed in a flash of the login page — most visibly when
+  arriving from the Back button. Traded away: a signed-out visitor sees a
+  placeholder for the length of one request.
+- **Queries are stale after 15 seconds rather than immediately.** The default
+  of zero meant every dialog open and every step back paid for a round trip
+  that had already happened — about 270 ms each from Europe to the API. Every
+  mutation still invalidates what it touched, so the only staleness this can
+  expose is another session's change.
+- **Re-sorting keeps the previous rows on screen** (`keepPreviousData`).
+  Changing the sort changes the query key, which otherwise blanked the table to
+  a skeleton and made a reorder look like a reload.

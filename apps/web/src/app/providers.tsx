@@ -19,7 +19,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
     () =>
       new QueryClient({
         defaultOptions: {
-          queries: { retry: shouldRetry, refetchOnWindowFocus: false },
+          queries: {
+            retry: shouldRetry,
+            refetchOnWindowFocus: false,
+            // Without this every mount refetches, so reopening a dialog or
+            // stepping back into a folder waits on a round trip that already
+            // happened. Every mutation invalidates what it touched, so the
+            // only staleness this can show is another session's change.
+            staleTime: 15_000,
+          },
           mutations: { retry: false },
         },
       }),

@@ -2,6 +2,7 @@
 
 import {
   type InfiniteData,
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -38,6 +39,10 @@ export function useFolderChildren(id: string, sort: ChildSortField, direction: S
       fetchFolderChildren(id, { sort, direction, cursor: pageParam ?? undefined }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage: ChildrenPage) => lastPage.nextCursor,
+    // Changing the sort changes the key, which would otherwise blank the table
+    // back to a skeleton. Keeping the previous rows on screen makes re-sorting
+    // read as a reorder rather than a reload.
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -112,6 +117,12 @@ export function useInvalidateFolder(folderId: string) {
     if (alsoFolderId !== undefined && alsoFolderId !== folderId) {
       void queryClient.invalidateQueries({ queryKey: folderKeys.anyChildren(alsoFolderId) });
     }
+
+    // The move picker's tree is cached separately and a move reshapes it, so
+    // every branch is dropped rather than guessing which two changed.
+    void queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey[0] === 'folder' && query.queryKey[2] === 'tree-children',
+    });
   };
 }
 

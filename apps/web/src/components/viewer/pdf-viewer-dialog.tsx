@@ -40,14 +40,16 @@ export function PdfViewerDialog({ fileId, fileName, onClose }: PdfViewerDialogPr
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
       <DialogContent className="flex h-[85vh] max-w-4xl flex-col gap-4">
-        <DialogHeader className="flex-row items-start justify-between gap-4 space-y-0">
+        {/* `pe-10` keeps this row clear of the close button, which the dialog
+            positions absolutely in the same corner. */}
+        <DialogHeader className="flex-row items-start justify-between gap-4 space-y-0 pe-10">
           <div className="min-w-0">
             <DialogTitle className="truncate">{fileName}</DialogTitle>
             <DialogDescription>Opened from a short-lived signed link.</DialogDescription>
           </div>
 
           {link.isSuccess && (
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="sm" className="shrink-0">
               <a href={link.data.url} download={fileName} target="_blank" rel="noreferrer">
                 <Download className="size-4" />
                 Download
