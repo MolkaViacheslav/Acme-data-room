@@ -1,0 +1,17 @@
+{
+  "name": "acme-data-room",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "build": "pnpm --filter \"./apps/*\" build",
+    "typecheck": "pnpm --filter \"./apps/*\" typecheck",
+    "lint": "pnpm --filter \"./apps/*\" lint",
+    "dev:api": "pnpm --filter @acme/api start:dev",
+    "dev:web": "pnpm --filter @acme/web dev"
+  }
+}

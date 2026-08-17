@@ -1,0 +1,9 @@
+packages:
+  - "apps/*"
+
+# Explicit postinstall-script policy so `pnpm install` never stops to ask.
+allowBuilds:
+  "@tailwindcss/oxide": true
+  esbuild: true
+  sharp: false
+  unrs-resolver: false
