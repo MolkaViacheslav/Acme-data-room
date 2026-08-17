@@ -82,3 +82,18 @@ appended to as work proceeds.
 - One item in the plan turned out to be impossible as written — middleware
   cannot read a cookie scoped to another origin — and was recorded under "Open
   questions" with the reasoning, rather than quietly substituted.
+
+### Phase 3 — AccessService
+
+- The test plan was written and agreed before any implementation: the seven
+  scenarios named in the plan, each as its own test case with its own
+  assertion, so that no refusal could pass for the wrong reason.
+- Beyond those seven, the suite was extended with the failure modes that make
+  this kind of code leak — prefix collisions between sibling paths, a path
+  missing its trailing slash, a null stored token matching a null presented
+  one, an anonymous caller compared against a null owner id, a share reaching
+  across data rooms, a file share reaching its parent folder, and the exact
+  expiry boundary. 39 tests in total, none of which need a database.
+- Shaping the policy as a pure function was a deliberate testability decision
+  taken in Phase 2 and honoured here; it is what makes that coverage cheap
+  enough to be worth writing.

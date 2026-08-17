@@ -148,3 +148,49 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
   demo account, so the suite now proves its own isolation before it will run:
   it writes a sentinel row and refuses to continue unless that row landed in
   the test schema and nowhere else. Traded away a shorter setup.
+
+## Phase 3 — AccessService
+
+- **The authorization decision is a pure function, `decideAccess`.** It takes
+  the actor, the resource, every share in the room, the presented token and the
+  current time as arguments — no database, no clock, no injection. Every branch
+  of the policy is therefore reachable from a test without infrastructure,
+  which is why this phase has 39 tests and no fixtures. `AccessService` is
+  reduced to fetching inputs. Traded away the convenience of querying
+  mid-decision: the service must load all shares for the room up front rather
+  than short-circuiting.
+- **Denials carry a typed reason.** `NONE` alone would let the revoked-share
+  test pass when the share was merely missing. The reason also gives Phase 7
+  what it needs to tell "revoked" from "expired" without a second query.
+  `AccessService.requireAccess` deliberately drops it and answers a bare 404.
+- **404, never 403.** An actor who may not see a resource must not learn that
+  it exists, so a missing resource and a forbidden one are indistinguishable
+  from outside.
+- **The granted role is read off the share rather than hard-coded.** Both are
+  `VIEWER` today, so this changes nothing now — but it means adding `EDITOR` to
+  the enum fails to compile at the one place that has to decide what an editor
+  may do, instead of quietly granting them read-only access.
+- **Revocation ignores the clock.** Any `revokedAt` at all means revoked, rather
+  than `revokedAt <= now`. Comparing against the clock would leave a window in
+  which a revoked share still worked, and revocation is supposed to be
+  immediate. Traded away scheduled revocation, which is not a feature.
+- **A share expiring exactly now is expired.** An arbitrary choice, but an
+  explicit and tested one rather than an accident of `<` versus `<=`.
+- **Malformed paths match nothing rather than being repaired.** Ancestry is a
+  prefix test over the materialized path, and the trailing slash is the entire
+  safety property — without it `/root/legal` matches `/root/legalese/` and
+  leaks a sibling subtree. A path missing its bounding slashes is rejected
+  outright. Traded away tolerance of bad data, deliberately.
+- **A folder share does not grant the data room entity.** Sharing the root
+  folder shares its contents, not the room itself. Strictness costs nothing
+  here and the alternative is a quiet escalation.
+- **Tokens are compared in constant time**, with a small inline loop rather
+  than `crypto.timingSafeEqual`, so the decision function keeps no imports.
+  The comparison leaks length, which is fine — tokens are fixed width.
+- **Shares are scoped by data room twice**: once in the query, and again inside
+  the decision function. The second check is redundant today and is there so
+  that a future change to the query cannot silently open a cross-room hole.
+- **Folder paths for folder shares come from a second query, filtered by data
+  room as well as by id.** `Share` is polymorphic and has no foreign key to
+  join through. The extra `dataRoomId` filter stops a share from importing a
+  path belonging to another room's folder.

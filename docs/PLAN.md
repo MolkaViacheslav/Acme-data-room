@@ -107,7 +107,7 @@ VIEWER | NONE }`. Resolution order:
      `userId`, or on `email` for users who registered after being invited)
 3. Otherwise `NONE` → throw `NotFoundException`
 
-- [ ] Implemented with unit tests covering: owner, direct share, inherited
+- [x] Implemented with unit tests covering: owner, direct share, inherited
       share via ancestor folder, revoked share, expired share, wrong token,
       stranger
 
