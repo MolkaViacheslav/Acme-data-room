@@ -67,7 +67,7 @@ export function EntryRow({
         </div>
       </TableCell>
 
-      <TableCell className="text-muted-foreground w-28 text-right tabular-nums">
+      <TableCell className="text-muted-foreground w-28 text-center tabular-nums">
         {/* A folder has no size of its own; showing 0 B would be a lie. */}
         {entry.type === 'file' ? formatSize(entry.sizeBytes) : '—'}
       </TableCell>

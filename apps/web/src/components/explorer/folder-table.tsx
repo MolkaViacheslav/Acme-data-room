@@ -57,7 +57,7 @@ export function FolderTable({
             direction={direction}
             onSort={onSort}
             className="w-28"
-            align="right"
+            align="center"
           />
           <SortableHeader
             field="updatedAt"

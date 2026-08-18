@@ -215,11 +215,11 @@ Direct browser → Supabase Storage. The file never passes through Railway.
 
 ## Phase 8 — README, ERD, deploy check (~1.5h)
 
-- [ ] `docs/ERD.md` — Mermaid ER diagram
-- [ ] `docs/AI_USAGE.md` finalized
-- [ ] README: overview, live URLs, local setup (exact commands, env vars),
+- [x] `docs/ERD.md` — Mermaid ER diagram
+- [x] `docs/AI_USAGE.md` finalized
+- [x] README: overview, live URLs, local setup (exact commands, env vars),
       architecture, design decisions from `docs/DECISIONS.md`, ERD, AI note
-- [ ] README "How it scales" — answer all three questions concretely:
+- [x] README "How it scales" — answer all three questions concretely:
   - **Subtree size and item count.** Today: one aggregate query over the
     materialized path prefix (`WHERE path LIKE '/root/a/%'`), backed by the
     `(dataRoomId, path)` index. At scale: denormalized `descendantCount` /
@@ -236,9 +236,11 @@ Direct browser → Supabase Storage. The file never passes through Railway.
     permission check already funnels through `resolveAccess`, the change is
     localized. Conflicting grants resolve as most-specific-wins, then
     highest-role-wins.
-- [ ] Final pass on the deployed apps: register a fresh account, upload, share,
-      open the link in a private window, revoke, confirm the recipient loses access
-- [ ] Seeded demo account credentials in the README so reviewers can log in fast
+- [x] Final pass on the deployed apps: register a fresh account, upload, share,
+      open the link in a private window, revoke, confirm the recipient loses access.
+      Run against production with no cookies at all: the link resolved, listed the
+      folder and downloaded the file; revocation turned all three into 410 at once.
+- [x] Seeded demo account credentials in the README so reviewers can log in fast
 
 ---
 

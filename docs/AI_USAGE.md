@@ -159,3 +159,37 @@ appended to as work proceeds.
 - The seven Phase 3 scenarios were re-run through the service layer against a
   real database. Two existing tests failed and were *supposed* to: both asserted
   the old bare-404 behaviour that decision A deliberately replaced.
+
+### Phase 8 — README, ERD, deploy check
+
+- The ERD was written from the schema file rather than from memory of it, and
+  the final deploy pass was run as real HTTP against production rather than
+  described: register, create a folder, upload a PDF, share it as a public
+  link, open it with no cookies at all, revoke, and confirm all three
+  endpoints answer 410 at the same moment.
+- The README states what the app does not do as plainly as what it does,
+  including the third-party-cookie limitation that affects named shares in a
+  private window. That limitation was found by the reviewer testing in
+  incognito, not by the tests.
+
+## What this process caught, and what it did not
+
+Worth recording honestly, since the point of the log is to be useful rather
+than flattering.
+
+Caught before reaching a deploy, by running commands rather than reasoning
+about them: a build that would have gone green and then failed to boot; a
+silently empty `dist`; an integration suite that was truncating the
+application's own schema; a fake PDF accepted through a signed upload URL.
+
+Caught by tests written for something else: the false "this link was shared
+with a different email address" for a recipient who simply navigated outside
+the share — found by the last step of a sequence test, which is why it was
+written as a sequence.
+
+Not caught by any of it, and found by hand in a browser: the sign-in redirect
+loop, the share link lost through the sign-up form, the column header that did
+not line up with its values, and the third-party-cookie limitation. Every one
+of those was in code that type-checked, linted and passed its tests. The
+lesson recorded here is the obvious one — none of that substitutes for opening
+the app.

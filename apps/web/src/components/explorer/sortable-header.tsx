@@ -14,7 +14,7 @@ interface SortableHeaderProps {
   readonly onSort: (field: ChildSortField) => void;
   readonly className?: string;
   /** Must match the alignment of the cells below, or the column looks broken. */
-  readonly align?: 'left' | 'right';
+  readonly align?: 'left' | 'center' | 'right';
 }
 
 export function SortableHeader({
@@ -35,9 +35,10 @@ export function SortableHeader({
         onClick={() => onSort(field)}
         className={cn(
           'text-muted-foreground hover:text-foreground -mx-2 flex items-center gap-1 rounded px-2 py-1 text-sm font-medium transition-colors',
-          // The header is a flex container, so `text-right` on the cell does
-          // nothing to it — the alignment has to be set on the flex axis.
+          // The header is a flex container, so text alignment on the cell does
+          // nothing to it — it has to be set on the flex axis.
           align === 'right' && 'w-full justify-end',
+          align === 'center' && 'w-full justify-center',
         )}
       >
         {label}
