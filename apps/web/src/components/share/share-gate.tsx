@@ -1,12 +1,11 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
 
 import { ExplorerSkeleton } from '@/components/explorer/explorer-skeleton';
 import { ExplorerView } from '@/components/explorer/explorer-view';
+import { SharedFileView } from '@/components/share/shared-file-view';
 import { ShareUnavailable, type ShareProblem } from '@/components/share/share-unavailable';
-import { PdfViewerDialog } from '@/components/viewer/pdf-viewer-dialog';
 import { refusalReasonFrom } from '@/lib/api/client';
 import { resolveShareToken } from '@/lib/api/shares';
 import { shareSignInHref } from '@/lib/share/share-href';
@@ -39,7 +38,6 @@ interface ShareGateProps {
 }
 
 export function ShareGate({ token, folderId }: ShareGateProps) {
-  const router = useRouter();
   const shared = useQuery({
     queryKey: ['share', token],
     queryFn: () => resolveShareToken(token),
@@ -57,14 +55,15 @@ export function ShareGate({ token, folderId }: ShareGateProps) {
     );
   }
 
-  // A single shared file has no folder to browse; open it directly.
+  // A single shared file has no folder to browse. Closing its viewer must not
+  // navigate anywhere — least of all to the visitor's own data room.
   if (shared.data.fileId !== null) {
     return (
-      <PdfViewerDialog
+      <SharedFileView
         fileId={shared.data.fileId}
         fileName={shared.data.name}
+        dataRoomName={shared.data.dataRoomName}
         token={token}
-        onClose={() => router.push('/')}
       />
     );
   }

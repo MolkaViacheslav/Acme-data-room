@@ -330,6 +330,45 @@ describeWithDatabase('sharing, end to end', () => {
       );
     });
 
+    /**
+     * A file share grants the file and nothing around it.
+     *
+     * Worth stating against the database rather than only in the pure policy
+     * tests, because a viewer who could walk up to the parent folder would see
+     * every other document in it.
+     */
+    it('does not let a file link reach the folder holding it', async () => {
+      const file = await prisma.file.create({
+        data: {
+          name: 'Board Pack.pdf',
+          folderId: legalId,
+          dataRoomId,
+          storageKey: `${dataRoomId}/board-pack.pdf`,
+          mimeType: 'application/pdf',
+          sizeBytes: 1024,
+          uploadStatus: 'READY',
+        },
+      });
+
+      const share = await shares.create(owner, {
+        resourceType: 'FILE',
+        resourceId: file.id,
+        mode: 'PUBLIC_LINK',
+      });
+
+      // The link opens the file itself.
+      await expect(shares.resolveByToken(null, share.token)).resolves.toMatchObject({
+        resourceType: 'FILE',
+        fileId: file.id,
+        folderId: null,
+      });
+
+      // And nothing above or beside it.
+      await expect(folders.findOne(null, legalId, share.token)).rejects.toThrow();
+      await expect(folders.findOne(null, contractsId, share.token)).rejects.toThrow();
+      await expect(folders.findOne(null, rootId, share.token)).rejects.toThrow();
+    });
+
     it('reveals nothing for a token that was never issued', async () => {
       await expect(shares.resolveByToken(null, 'made-up-token')).rejects.toBeInstanceOf(
         NotFoundException,

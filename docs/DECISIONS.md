@@ -430,3 +430,10 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
   targets, session resolution. No DOM and no component rendering: these are the
   decisions that broke in a browser, and they are cheap to pin down without one.
   Traded away coverage of anything that needs rendering.
+- **A shared file gets its own page; closing the viewer navigates nowhere.** It
+  used to send the visitor to `/`, which for anyone signed in meant landing in
+  their own data room — indistinguishable, at a glance, from the share having
+  exposed everything. Nothing had leaked, and an integration test now says so
+  against the database: a file link resolves to the file alone, and the same
+  token is refused for the folder holding it, that folder's parent, and the
+  data room root.
