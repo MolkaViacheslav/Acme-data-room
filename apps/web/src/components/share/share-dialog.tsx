@@ -99,7 +99,7 @@ export function ShareDialog({ target, onClose }: { target: ShareTarget; onClose:
 
           {mode === 'RESTRICTED' && (
             <div className="grid gap-2">
-              <Label htmlFor="share-email">Invite by email</Label>
+              <Label htmlFor="share-email">Who may open it</Label>
               <div className="flex gap-2">
                 <Input
                   id="share-email"
@@ -117,6 +117,13 @@ export function ShareDialog({ target, onClose }: { target: ShareTarget; onClose:
                   Add
                 </Button>
               </div>
+
+              {/* No mail is sent by this app. Saying "invite" would promise a
+                  delivery that never happens. */}
+              <p className="text-muted-foreground text-xs">
+                Nothing is emailed — copy the link below and send it yourself. They will need
+                to sign in with one of these addresses to open it.
+              </p>
 
               {emails.length > 0 && (
                 <ul className="flex flex-wrap gap-1.5 pt-1">

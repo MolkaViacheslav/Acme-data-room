@@ -437,3 +437,28 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
   against the database: a file link resolves to the file alone, and the same
   token is refused for the folder holding it, that folder's parent, and the
   data room root.
+
+## Post-Phase 8 — first-party cookies
+
+- **The API is proxied through the frontend's origin** by a rewrite in
+  `next.config.ts`, rather than being called cross-site. The auth cookie was a
+  third-party cookie, and Chrome incognito blocks those by default: the sign-in
+  response arrived, the cookie was discarded, and a restricted share could
+  never be opened in a private window — the first thing anyone testing sharing
+  would try. Proxying makes the cookie first-party and the problem disappears
+  rather than being documented.
+  Traded away: one extra hop and a Vercel function invocation per API call.
+  Uploads keep bypassing it entirely, so the heavy traffic is unaffected, and
+  the backend is still a separate deployment — only the browser's route to it
+  changed.
+- **No rewrite is added when `API_ORIGIN` is absent**, so local development
+  keeps calling the API directly. `localhost` is already one site, so there is
+  nothing to fix there and a proxy would only add a hop.
+- **The cookie keeps `SameSite=None; Secure` in production.** It is now
+  first-party, where `Lax` would be the tighter choice, but `None` is permissive
+  rather than restrictive and works in both arrangements — so the API needs no
+  knowledge of whether it is being proxied.
+- **The share dialog no longer says "Invite by email".** There is no mailer, so
+  the field records who may open a link rather than sending anything, and the
+  wording now says exactly that. A label that promises a delivery the app never
+  makes is the same class of defect as a control for an unimplemented feature.

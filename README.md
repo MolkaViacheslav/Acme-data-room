@@ -33,30 +33,26 @@ PDF to see the full flow.
 
 Stated plainly, because a half-finished control is worse than an absent one:
 
-- **No email is sent.** "Specific people" records who may open a link; you send
-  them the link yourself. The wording in the UI says so.
+- **No email is sent.** "Specific people" records who may open a link; you copy
+  the link and send it yourself. The dialog says so rather than calling it an
+  invitation.
 - **No editor role.** Every share is read-only. The schema and the policy are
   shaped so adding one is a small change, not a migration.
 - **No sweeper for abandoned uploads.** A cancelled upload leaves a `PENDING`
   row that no listing shows and that a retry reuses. A production system would
   reconcile these on a schedule.
 
-### One known limitation worth reading before you test sharing
+### A note on cookies
 
-The frontend and the API are deployed as **separate sites**, so the auth cookie
-is a third-party cookie. Browsers that block those — Chrome incognito does by
-default — accept the sign-in response and discard the cookie.
+The API is served from the frontend's own origin, through a rewrite in
+`next.config.ts`, so the auth cookie is **first-party**. That matters: served
+from a different origin it would be a third-party cookie, and browsers that
+block those — Chrome incognito does by default — accept the sign-in response
+and silently discard it, which broke restricted shares in a private window.
 
-This affects only flows that need an account:
-
-- **Public links work everywhere**, including incognito. No account, no cookie.
-- **Restricted (named) shares need a signed-in recipient**, so in a private
-  window with third-party cookies blocked, signing in will not stick. The app
-  detects this and says so rather than looping.
-
-Signing in works normally in a regular window in Chrome and Safari, both
-verified by hand. The fix is to serve both from one site — see
-[docs/DECISIONS.md](docs/DECISIONS.md).
+The backend is still a separate deployment on Railway; only the browser's path
+to it changes. Uploads are unaffected — the browser sends those straight to
+Supabase Storage.
 
 ---
 
@@ -83,7 +79,10 @@ Fill in `apps/api/.env` — every variable is documented in the example file:
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → API keys → `service_role` (server only) |
 | `SUPABASE_STORAGE_BUCKET` | `data-room-files` — a **private** bucket |
 
-`apps/web/.env.local` needs one: `NEXT_PUBLIC_API_URL=http://localhost:3001`.
+`apps/web/.env.local` needs `NEXT_PUBLIC_API_URL=http://localhost:3001`. Locally
+both apps are on `localhost`, which is already the same site, so the browser
+talks to the API directly and no proxy is needed. Deployed, that variable is
+`/api` and `API_ORIGIN` points at the API — see `apps/web/.env.example`.
 
 Then:
 
