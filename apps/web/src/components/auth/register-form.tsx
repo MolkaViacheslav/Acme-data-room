@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 import { FormField } from '@/components/auth/form-field';
 import { SubmitButton } from '@/components/auth/submit-button';
-import { register } from '@/lib/api/auth';
+import { registerAndConfirm } from '@/lib/api/auth';
 import { describeError } from '@/lib/api/client';
 import type { AuthUser, RegisterRequest } from '@/lib/api/types';
 import { safeNextPath } from '@/lib/auth/next-path';
@@ -34,7 +34,7 @@ export function RegisterForm() {
   const [errors, setErrors] = useState<FieldErrors<RegisterRequest>>({});
 
   const mutation = useMutation({
-    mutationFn: register,
+    mutationFn: registerAndConfirm,
     onSuccess: (user: AuthUser) => {
       queryClient.setQueryData(SESSION_QUERY_KEY, user);
       toast.success(`Your data room is ready, ${user.name}.`);

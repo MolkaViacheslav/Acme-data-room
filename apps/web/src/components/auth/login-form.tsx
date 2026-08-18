@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 import { FormField } from '@/components/auth/form-field';
 import { SubmitButton } from '@/components/auth/submit-button';
-import { login } from '@/lib/api/auth';
+import { loginAndConfirm } from '@/lib/api/auth';
 import { describeError } from '@/lib/api/client';
 import type { AuthUser, LoginRequest } from '@/lib/api/types';
 import { safeNextPath } from '@/lib/auth/next-path';
@@ -27,9 +27,9 @@ export function LoginForm() {
   const [errors, setErrors] = useState<FieldErrors<LoginRequest>>({});
 
   const mutation = useMutation({
-    mutationFn: login,
+    mutationFn: loginAndConfirm,
     onSuccess: (user: AuthUser) => {
-      // Seed the cache so the landing page renders without a second round trip.
+      // Safe to seed: the user came back from /auth/me, so the cookie is real.
       queryClient.setQueryData(SESSION_QUERY_KEY, user);
       toast.success(`Welcome back, ${user.name}.`);
       router.replace(next);
