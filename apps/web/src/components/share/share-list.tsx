@@ -58,19 +58,21 @@ function ShareRow({
     }
   }
 
+  const isPublic = share.mode === 'PUBLIC_LINK';
+  const audience = isPublic ? 'Anyone with the link' : share.recipientEmails.join(', ');
+
   return (
     <li className="flex items-center gap-2 py-2">
-      {share.mode === 'PUBLIC_LINK' ? (
+      {isPublic ? (
         <Link2 className="text-muted-foreground size-4 shrink-0" aria-hidden />
       ) : (
         <Users className="text-muted-foreground size-4 shrink-0" aria-hidden />
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm">
-          {share.mode === 'PUBLIC_LINK'
-            ? 'Anyone with the link'
-            : share.recipientEmails.join(', ')}
+        {/* Long recipient lists are cut off here, so keep the full value on hover. */}
+        <p className="truncate text-sm" title={audience}>
+          {audience}
         </p>
         {share.expiresAt !== null && (
           <p className="text-muted-foreground text-xs">
@@ -79,8 +81,8 @@ function ShareRow({
         )}
       </div>
 
-      {/* Fixed width: "Copied" is wider than "Copy", and letting the button
-          resize pushed Revoke past the edge of the dialog. */}
+      {/* Fixed width so swapping "Copy" for "Copied" does not resize the
+          button and nudge Revoke sideways for the two seconds it is shown. */}
       <Button variant="ghost" size="sm" className="w-24 shrink-0" onClick={() => void copy()}>
         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
         {copied ? 'Copied' : 'Copy'}

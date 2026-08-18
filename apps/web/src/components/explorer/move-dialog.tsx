@@ -67,7 +67,7 @@ export function MoveDialog({
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Move “{entry.name}”</DialogTitle>
           <DialogDescription>Choose a destination folder.</DialogDescription>

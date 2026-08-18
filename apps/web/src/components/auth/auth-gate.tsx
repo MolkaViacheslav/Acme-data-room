@@ -20,15 +20,15 @@ import { useSession } from '@/lib/auth/use-session';
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data, isPending } = useSession();
+  const { user, isPending } = useSession();
 
   const next = safeNextPath(searchParams.get('next'));
 
   useEffect(() => {
-    if (data !== undefined) router.replace(next);
-  }, [data, next, router]);
+    if (user !== null) router.replace(next);
+  }, [user, next, router]);
 
-  if (isPending || data !== undefined) {
+  if (isPending || user !== null) {
     return (
       <div className="w-full max-w-sm space-y-3" aria-hidden>
         <Skeleton className="h-8 w-32" />

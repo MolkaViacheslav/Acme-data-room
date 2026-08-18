@@ -41,7 +41,7 @@ export function PdfViewerDialog({ fileId, fileName, token, onClose }: PdfViewerD
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="flex h-[85vh] max-w-4xl flex-col gap-4">
+      <DialogContent className="flex h-[85vh] flex-col gap-4 sm:max-w-4xl">
         {/* `pe-10` keeps this row clear of the close button, which the dialog
             positions absolutely in the same corner. */}
         <DialogHeader className="flex-row items-start justify-between gap-4 space-y-0 pe-10">

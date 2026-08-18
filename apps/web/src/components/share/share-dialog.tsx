@@ -74,7 +74,7 @@ export function ShareDialog({ target, onClose }: { target: ShareTarget; onClose:
 
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="truncate">
             {target.resourceType === 'DATA_ROOM' ? 'Share this data room' : `Share “${target.name}”`}

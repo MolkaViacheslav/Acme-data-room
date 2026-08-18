@@ -414,3 +414,19 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
 - **A 401 in the explorer redirects to sign-in rather than rendering.** It used
   to show "Could not open this folder — You are not signed in", which reads as a
   failure when it is an instruction, and left no way forward.
+- **A 401 wins over cached session data.** React Query keeps the last
+  successful value when a refetch fails, so `useSession()` could report a
+  signed-in user *and* a 401 at the same moment. `AuthGate` redirected on "there
+  is a user" while the explorer redirected on "not authorised", and the two
+  bounced against each other — a navigation loop re-requesting `/auth/me` and
+  the folder listing about once a second, indefinitely. `useSession` now
+  resolves to a single answer, and a 401 anywhere else drops the cached session
+  so the whole app converges on signed-out. The resolution rule is a pure
+  function with a test, because reading the component is what let this through.
+- **Link building for the share flow lives in `lib/share/share-href.ts`.** The
+  sign-in link on a share page has to carry the token back, and building that
+  string inline in a component is how it got lost.
+- **`apps/web` has a Jest setup for pure logic only** — link building, redirect
+  targets, session resolution. No DOM and no component rendering: these are the
+  decisions that broke in a browser, and they are cheap to pin down without one.
+  Traded away coverage of anything that needs rendering.
