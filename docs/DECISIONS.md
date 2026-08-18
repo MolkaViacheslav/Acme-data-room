@@ -391,3 +391,10 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
   account the link does not name used to fall through to a bare 404. They hold
   the link, so under the disclosure rule above they are told it was addressed
   to a different email — a realistic case when a recipient forwards a link.
+- **The "anonymous with no credentials" check runs before the resource is even
+  looked up.** Placed after it — as it first was — the API answered 401 for an
+  id that exists and 404 for one that does not, handing anyone not signed in an
+  oracle for whether a resource exists. That is precisely what the 404 rule is
+  for, so the check moved ahead of the lookup and a regression test asserts both
+  answers are byte-identical. Found by probing the deployed API rather than by
+  reading the code.

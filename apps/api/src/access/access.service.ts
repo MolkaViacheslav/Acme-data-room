@@ -94,12 +94,25 @@ export class AccessService {
     resourceId: string,
     options: ResolveAccessOptions = {},
   ): Promise<GrantedAccess> {
+    const presentedToken = options.token ?? null;
+
+    // Checked before the resource is even looked up, and deliberately so.
+    // Deciding this afterwards would answer 401 for an id that exists and 404
+    // for one that does not — handing an anonymous caller an oracle for whether
+    // a resource exists, which is the precise thing the 404 rule prevents.
+    if (actor === null && (presentedToken === null || presentedToken === '')) {
+      throw new UnauthorizedException({
+        reason: 'SIGN_IN_REQUIRED',
+        message: 'You are not signed in.',
+      });
+    }
+
     const evaluated = await this.evaluate(actor, resourceType, resourceId, options);
 
     if (evaluated === null) throw new NotFoundException('Not found.');
     if (evaluated.decision.role !== 'NONE') return evaluated.decision;
 
-    this.refuse(evaluated.shares, actor, options.token ?? null);
+    this.refuse(evaluated.shares, actor, presentedToken);
   }
 
   /**
@@ -119,17 +132,6 @@ export class AccessService {
     actor: AccessActor | null,
     presentedToken: string | null,
   ): never {
-    // Anonymous and holding nothing: there is no resource in the system this
-    // caller could be granted, so this says nothing about whether it exists.
-    // Keeping it a 401 is what lets the frontend send them to sign in rather
-    // than showing "not found" to someone whose session simply lapsed.
-    if (actor === null && (presentedToken === null || presentedToken === '')) {
-      throw new UnauthorizedException({
-        reason: 'SIGN_IN_REQUIRED',
-        message: 'You are not signed in.',
-      });
-    }
-
     const held =
       presentedToken === null || presentedToken === ''
         ? undefined

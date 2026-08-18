@@ -307,6 +307,22 @@ describe('AccessService', () => {
         expect((error as Error).message).toBe('Not found.');
       });
 
+      it('answers an anonymous caller the same way whether or not the folder exists', async () => {
+        // Otherwise 401-for-real and 404-for-fake is an existence oracle for
+        // anyone not signed in.
+        shareOnFolder({});
+        const real = await refusalFor(null);
+
+        prisma.folder.findUnique.mockResolvedValue(null);
+        const fake = await refusalFor(null);
+
+        expect(real).toBeInstanceOf(UnauthorizedException);
+        expect(fake).toBeInstanceOf(UnauthorizedException);
+        expect((fake as UnauthorizedException).getResponse()).toEqual(
+          (real as UnauthorizedException).getResponse(),
+        );
+      });
+
       it('says nothing when the token is the right length but wrong', async () => {
         // Guards the constant-time comparison against a length-only check.
         shareOnFolder({ revokedAt: new Date() });
