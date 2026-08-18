@@ -20,23 +20,33 @@ import {
 import type { ChildEntry, ChildrenPage, FolderDetail } from '@/lib/api/types';
 
 export const folderKeys = {
-  detail: (id: string) => ['folder', id, 'detail'] as const,
-  children: (id: string, sort: ChildSortField, direction: SortDirection) =>
-    ['folder', id, 'children', sort, direction] as const,
+  // The token is part of the key: the owner's view of a folder and a guest's
+  // view of the same folder are different answers and must not share a cache.
+  detail: (id: string, token?: string) => ['folder', id, 'detail', token ?? null] as const,
+  children: (id: string, sort: ChildSortField, direction: SortDirection, token?: string) =>
+    ['folder', id, 'children', sort, direction, token ?? null] as const,
   /** Every sort variant of one folder's listing. */
   anyChildren: (id: string) => ['folder', id, 'children'] as const,
   deletePreview: (id: string) => ['folder', id, 'delete-preview'] as const,
 };
 
-export function useFolder(id: string) {
-  return useQuery({ queryKey: folderKeys.detail(id), queryFn: () => fetchFolder(id) });
+export function useFolder(id: string, token?: string) {
+  return useQuery({
+    queryKey: folderKeys.detail(id, token),
+    queryFn: () => fetchFolder(id, token),
+  });
 }
 
-export function useFolderChildren(id: string, sort: ChildSortField, direction: SortDirection) {
+export function useFolderChildren(
+  id: string,
+  sort: ChildSortField,
+  direction: SortDirection,
+  token?: string,
+) {
   return useInfiniteQuery({
-    queryKey: folderKeys.children(id, sort, direction),
+    queryKey: folderKeys.children(id, sort, direction, token),
     queryFn: ({ pageParam }) =>
-      fetchFolderChildren(id, { sort, direction, cursor: pageParam ?? undefined }),
+      fetchFolderChildren(id, { sort, direction, token, cursor: pageParam ?? undefined }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage: ChildrenPage) => lastPage.nextCursor,
     // Changing the sort changes the key, which would otherwise blank the table

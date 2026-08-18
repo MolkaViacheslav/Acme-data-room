@@ -346,3 +346,48 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
 - **Re-sorting keeps the previous rows on screen** (`keepPreviousData`).
   Changing the sort changes the query key, which otherwise blanked the table to
   a skeleton and made a reorder look like a reload.
+
+## Phase 7 — Sharing
+
+- **A refusal names its reason only to someone holding the exact token.** A
+  caller presenting a token that matches a real share gets 410 `REVOKED`, 410
+  `EXPIRED`, 401 `SIGN_IN_REQUIRED` or 403 `NOT_INVITED`; everyone else gets a
+  bare 404. They were given that link, so telling them it no longer works
+  reveals nothing they did not already hold — while a stranger still cannot use
+  the endpoint to discover which resources exist. The token comparison is
+  constant-time, so this cannot be turned into an oracle. Tested from both
+  sides: the four disclosures, and the silence for no token, a wrong token, and
+  a wrong token of the right length.
+- **Anonymous with no token is 401, not 404.** Such a caller could not be
+  granted anything by any rule, so the answer says nothing about the resource —
+  and it is what lets the frontend offer sign-in instead of "not found" to
+  someone whose session simply lapsed.
+- **`JwtAuthGuard` now attempts authentication on `@Public()` routes** instead
+  of skipping the cookie entirely, and can never throw while doing so. Without
+  it an invited recipient who *is* signed in would look anonymous on a public
+  route and fail the restricted-share check. Verified against the existing
+  public routes: `/health`, login, register and logout all ignore
+  `request.user`, and logout still works with a dead cookie.
+- **Every share carries a token, including restricted ones.** The token is the
+  share's address — `/share/<token>` is how anyone reaches it. What it *means*
+  differs: for a public link it is the credential, for a restricted share it
+  only identifies which share is being opened, and `decideAccess` never
+  consults it in that mode. This corrects the Phase 1 schema comment.
+- **Sharing the root folder creates a `DATA_ROOM` share, not a `FOLDER` one.**
+  Phase 3 decided deliberately that a folder share does not grant the data room
+  as an entity; without this the enum value would never be produced by any path
+  through the UI.
+- **`/share/[token]` renders the same `ExplorerView` as the owner's drive**,
+  given one extra prop: a token and a function that builds folder links. It is
+  read-only because the API reports the caller's role as `VIEWER` and the
+  explorer hides controls on that basis — the gate built in Phase 6. No
+  second implementation, and no `isShareView` flag to keep in sync.
+- **The token is part of every query key.** The owner's view of a folder and a
+  guest's view of the same folder are different answers and must not share a
+  cache entry.
+- **`?next=` accepts same-site paths only.** Rejecting anything starting with
+  `//` or a scheme keeps the sign-in detour from becoming an open redirect.
+- **A fifth edge case was added to the plan's four.** Someone signed in as an
+  account the link does not name used to fall through to a bare 404. They hold
+  the link, so under the disclosure rule above they are told it was addressed
+  to a different email — a realistic case when a recipient forwards a link.

@@ -85,3 +85,19 @@ export function describeError(error: unknown): string {
   if (error instanceof Error) return error.message;
   return 'Something went wrong.';
 }
+
+/**
+ * The machine-readable reason the API attached to a refusal.
+ *
+ * Only present when the caller is entitled to know — someone holding the exact
+ * share link. Everyone else gets a bare 404 with nothing to read here.
+ */
+export function refusalReasonFrom(error: unknown): string | null {
+  if (!(error instanceof ApiError) || typeof error.body !== 'object' || error.body === null) {
+    return null;
+  }
+
+  const { reason } = error.body as { reason?: unknown };
+
+  return typeof reason === 'string' && reason !== '' ? reason : null;
+}

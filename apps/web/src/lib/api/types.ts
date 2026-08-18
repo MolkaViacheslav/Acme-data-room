@@ -125,3 +125,45 @@ export interface AuthUser {
     readonly rootFolderId: string;
   };
 }
+
+export type ShareMode = 'PUBLIC_LINK' | 'RESTRICTED';
+
+/** `POST /shares` */
+export interface CreateShareRequest {
+  readonly resourceType: ShareResourceType;
+  readonly resourceId: string;
+  readonly mode: ShareMode;
+  readonly recipientEmails?: readonly string[];
+  readonly expiresAt?: string;
+}
+
+export type ShareResourceType = 'DATA_ROOM' | 'FOLDER' | 'FILE';
+
+export interface ShareSummary {
+  readonly id: string;
+  readonly resourceType: ShareResourceType;
+  readonly resourceId: string;
+  readonly mode: ShareMode;
+  readonly token: string;
+  readonly recipientEmails: readonly string[];
+  readonly expiresAt: string | null;
+  readonly createdAt: string;
+}
+
+/** `GET /shares/by-token/:token` */
+export interface SharedResource {
+  readonly resourceType: ShareResourceType;
+  readonly resourceId: string;
+  readonly name: string;
+  readonly dataRoomName: string;
+  /** The folder to open, or null when a single file was shared. */
+  readonly folderId: string | null;
+  readonly fileId: string | null;
+}
+
+/** Why the API refused, when it is willing to say. */
+export type RefusalReason =
+  | 'REVOKED'
+  | 'EXPIRED'
+  | 'SIGN_IN_REQUIRED'
+  | 'NOT_INVITED';

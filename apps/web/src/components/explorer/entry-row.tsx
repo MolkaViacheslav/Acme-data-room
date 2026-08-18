@@ -12,24 +12,28 @@ import { formatModified, formatSize } from '@/lib/explorer/format';
 interface EntryRowProps {
   readonly entry: ChildEntry;
   readonly canEdit: boolean;
+  readonly folderHref: (folderId: string) => string;
   readonly isRenaming: boolean;
   readonly onStartRename: () => void;
   readonly onCancelRename: () => void;
   readonly onRename: (name: string) => void;
   readonly onOpen: () => void;
   readonly onMove: () => void;
+  readonly onShare: () => void;
   readonly onDelete: () => void;
 }
 
 export function EntryRow({
   entry,
   canEdit,
+  folderHref,
   isRenaming,
   onStartRename,
   onCancelRename,
   onRename,
   onOpen,
   onMove,
+  onShare,
   onDelete,
 }: EntryRowProps) {
   return (
@@ -46,7 +50,7 @@ export function EntryRow({
             />
           ) : entry.type === 'folder' ? (
             <Link
-              href={`/d/${entry.id}`}
+              href={folderHref(entry.id)}
               className="truncate font-medium hover:underline underline-offset-4"
             >
               {entry.name}
@@ -79,6 +83,7 @@ export function EntryRow({
             onOpen={onOpen}
             onRename={onStartRename}
             onMove={onMove}
+            onShare={onShare}
             onDelete={onDelete}
           />
         )}

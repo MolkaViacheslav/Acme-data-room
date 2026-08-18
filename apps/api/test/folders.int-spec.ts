@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import { AccessService } from '../src/access/access.service';
 import type { AccessActor } from '../src/access/access.types';
@@ -286,8 +291,11 @@ describeWithDatabase('FoldersService subtree operations', () => {
       await expect(folders.findOne(stranger, legalId)).rejects.toThrow(NotFoundException);
     });
 
-    it('never lets an anonymous caller read a folder without a token', async () => {
-      await expect(folders.findOne(null, legalId)).rejects.toThrow(NotFoundException);
+    it('asks an anonymous caller with no token to sign in', async () => {
+      // Not a 404: holding neither a session nor a link says nothing about
+      // whether the folder exists, and the frontend needs to know to offer
+      // sign-in rather than "not found".
+      await expect(folders.findOne(null, legalId)).rejects.toBeInstanceOf(UnauthorizedException);
     });
 
     it('gives a share recipient read access but refuses writes', async () => {

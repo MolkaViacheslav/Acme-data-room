@@ -9,10 +9,14 @@ export interface ListChildrenParams {
   readonly limit?: number;
   readonly sort?: ChildSortField;
   readonly direction?: SortDirection;
+  /** Present when browsing through a share link. */
+  readonly token?: string;
 }
 
-export function fetchFolder(id: string): Promise<FolderDetail> {
-  return apiFetch<FolderDetail>(`/folders/${id}`, { cache: 'no-store' });
+export function fetchFolder(id: string, token?: string): Promise<FolderDetail> {
+  const suffix = token === undefined ? '' : `?token=${encodeURIComponent(token)}`;
+
+  return apiFetch<FolderDetail>(`/folders/${id}${suffix}`, { cache: 'no-store' });
 }
 
 export function fetchFolderChildren(
@@ -25,6 +29,7 @@ export function fetchFolderChildren(
   if (params.limit !== undefined) query.set('limit', String(params.limit));
   if (params.sort !== undefined) query.set('sort', params.sort);
   if (params.direction !== undefined) query.set('direction', params.direction);
+  if (params.token !== undefined) query.set('token', params.token);
 
   const suffix = query.size === 0 ? '' : `?${query.toString()}`;
 

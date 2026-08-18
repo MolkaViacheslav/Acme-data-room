@@ -1,3 +1,4 @@
+import { constantTimeEquals } from '../shared/constant-time-equals';
 import { isPathAncestorOrSelf } from '../shared/materialized-path';
 
 import type {
@@ -153,22 +154,6 @@ function evaluateRestricted(share: ShareCandidate, context: ShareContext): Share
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
-}
-
-/**
- * Compares in time proportional to the length of the input rather than to the
- * length of the matching prefix, so a caller cannot discover a token one
- * character at a time. Length itself is not hidden; the tokens are fixed-width.
- */
-function constantTimeEquals(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-
-  let difference = 0;
-  for (let index = 0; index < a.length; index += 1) {
-    difference |= a.charCodeAt(index) ^ b.charCodeAt(index);
-  }
-
-  return difference === 0;
 }
 
 /**

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -17,7 +17,12 @@ const EMPTY: LoginRequest = { email: '', password: '' };
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+
+  // Only same-site paths: an absolute URL here would be an open redirect.
+  const rawNext = searchParams.get('next');
+  const next = rawNext !== null && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
 
   const [values, setValues] = useState<LoginRequest>(EMPTY);
   const [errors, setErrors] = useState<FieldErrors<LoginRequest>>({});
@@ -28,7 +33,7 @@ export function LoginForm() {
       // Seed the cache so the landing page renders without a second round trip.
       queryClient.setQueryData(SESSION_QUERY_KEY, user);
       toast.success(`Welcome back, ${user.name}.`);
-      router.replace('/');
+      router.replace(next);
     },
     onError: (error: unknown) => {
       toast.error(describeError(error));

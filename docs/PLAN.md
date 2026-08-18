@@ -188,22 +188,28 @@ Direct browser → Supabase Storage. The file never passes through Railway.
 
 ## Phase 7 — Sharing (~2.5h)
 
-- [ ] `POST /shares` — `{ resourceType, resourceId, mode, recipientEmails?, expiresAt? }`
-- [ ] `GET /shares?resourceId=` — list live shares on a resource
-- [ ] `DELETE /shares/:id` — sets `revokedAt`; revocation is immediate
-- [ ] Public read routes accepting `?token=` and going through `AccessService`
-- [ ] Share dialog: mode toggle, copy-link button with a copied confirmation,
+- [x] `POST /shares` — `{ resourceType, resourceId, mode, recipientEmails?, expiresAt? }`
+- [x] `GET /shares?resourceId=` — list live shares on a resource
+- [x] `DELETE /shares/:id` — sets `revokedAt`; revocation is immediate
+- [x] Public read routes accepting `?token=` and going through `AccessService`
+- [x] `GET /shares/by-token/:token` — added beyond the plan: `/share/[token]`
+      cannot know whether it is opening a folder or a single file without it
+- [x] Share dialog: mode toggle, copy-link button with a copied confirmation,
       recipient email chips, list of existing shares with revoke buttons
-- [ ] `/share/[token]` page: read-only explorer. No upload zone, no row action
-      menu, no rename affordances — the read-only view must not show controls
-      that would 403.
-- [ ] Edge cases, each with a real UI state:
-      - link revoked while the recipient is viewing → next action shows
-        "Access to this item has been revoked" and offers a link home
-      - shared folder deleted by the owner while being viewed → same treatment
-      - expired link → its own message, distinct from revoked
-      - invited-by-email user who is not logged in → prompted to sign in, then
-        returned to the shared resource
+- [x] `/share/[token]` page: read-only explorer. Not a second implementation —
+      the same `ExplorerView`, given a token and a link-builder. It renders
+      read-only because the API reports the caller's role as VIEWER, which is
+      what the Phase 6 role gate was built for.
+- [x] Edge cases, each with a real UI state:
+      - [x] link revoked while viewing → 410 `REVOKED` → "Access to this item
+            has been revoked", with a way home
+      - [x] shared folder deleted by the owner → 404 → "This item is no longer
+            available"
+      - [x] expired link → 410 `EXPIRED` → its own message, distinct from revoked
+      - [x] invited by email but not signed in → 401 `SIGN_IN_REQUIRED` →
+            sign-in prompt that returns to the link afterwards
+      - [x] a fifth, found while building: signed in as somebody the link does
+            not name → 403 `NOT_INVITED`, rather than a confusing 404
 
 ---
 

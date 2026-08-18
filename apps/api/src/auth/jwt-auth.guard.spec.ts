@@ -44,6 +44,64 @@ describe('JwtAuthGuard', () => {
     await expect(guard.canActivate(context)).resolves.toBe(true);
   });
 
+  /**
+   * Public routes now try to identify the caller. That must never change
+   * whether the request is allowed — `/health`, `/auth/login` and especially
+   * `/auth/logout` have to keep working with a cookie that no longer verifies.
+   */
+  describe('identification on a @Public() route', () => {
+    it('leaves the caller anonymous when there is no cookie', async () => {
+      const guard = createGuard({ isPublic: true });
+      const { context, request } = contextWithCookies({});
+
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(request.user).toBeUndefined();
+    });
+
+    it('recognises a caller whose cookie is valid', async () => {
+      const guard = createGuard({
+        isPublic: true,
+        verify: () => Promise.resolve({ sub: 'user-1', email: 'ada@example.com' }),
+      });
+      const { context, request } = contextWithCookies({ [ACCESS_TOKEN_COOKIE]: 'good' });
+
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(request.user).toEqual({ id: 'user-1', email: 'ada@example.com' });
+    });
+
+    it('stays anonymous, and still allows the request, when the cookie is expired', async () => {
+      const guard = createGuard({
+        isPublic: true,
+        verify: () => Promise.reject(new Error('jwt expired')),
+      });
+      const { context, request } = contextWithCookies({ [ACCESS_TOKEN_COOKIE]: 'stale' });
+
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(request.user).toBeUndefined();
+    });
+
+    it('ignores a well-signed cookie whose claims are the wrong shape', async () => {
+      const guard = createGuard({ isPublic: true, verify: () => Promise.resolve({ sub: 42 }) });
+      const { context, request } = contextWithCookies({ [ACCESS_TOKEN_COOKIE]: 'odd' });
+
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(request.user).toBeUndefined();
+    });
+
+    it('survives a verifier that throws synchronously', async () => {
+      const guard = createGuard({
+        isPublic: true,
+        verify: () => {
+          throw new Error('boom');
+        },
+      });
+      const { context, request } = contextWithCookies({ [ACCESS_TOKEN_COOKIE]: 'anything' });
+
+      await expect(guard.canActivate(context)).resolves.toBe(true);
+      expect(request.user).toBeUndefined();
+    });
+  });
+
   it('rejects a request with no access token', async () => {
     const guard = createGuard({});
     const { context } = contextWithCookies({});

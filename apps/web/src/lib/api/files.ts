@@ -17,8 +17,10 @@ export function moveFile(id: string, folderId: string): Promise<FileDetail> {
   });
 }
 
-export function fetchDownloadUrl(id: string): Promise<DownloadUrl> {
-  return apiFetch<DownloadUrl>(`/files/${id}/download-url`, { cache: 'no-store' });
+export function fetchDownloadUrl(id: string, token?: string): Promise<DownloadUrl> {
+  const suffix = token === undefined ? '' : `?token=${encodeURIComponent(token)}`;
+
+  return apiFetch<DownloadUrl>(`/files/${id}/download-url${suffix}`, { cache: 'no-store' });
 }
 
 export function createUploadUrl(body: CreateUploadUrlRequest): Promise<UploadTarget> {

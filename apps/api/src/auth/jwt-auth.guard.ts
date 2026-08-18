@@ -30,9 +30,16 @@ export class JwtAuthGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    if (isPublic === true) return true;
-
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+
+    // A public route still wants to know *who* is calling when it can tell.
+    // A share link opened by someone already signed in has to resolve to that
+    // person, or a restricted share would treat them as a stranger.
+    if (isPublic === true) {
+      await this.attachActorIfRecognised(request);
+      return true;
+    }
+
     const token: unknown = request.cookies?.[ACCESS_TOKEN_COOKIE];
 
     if (typeof token !== 'string' || token === '') {
@@ -51,5 +58,29 @@ export class JwtAuthGuard implements CanActivate {
     request.user = { id: payload.sub, email: payload.email };
 
     return true;
+  }
+
+  /**
+   * Best-effort identification, used only on public routes.
+   *
+   * Never throws and never refuses the request: a missing, expired, tampered or
+   * oddly-shaped cookie all leave the caller anonymous, which is exactly what a
+   * public route expects. `/auth/logout` in particular has to keep working with
+   * a cookie that no longer verifies.
+   */
+  private async attachActorIfRecognised(request: AuthenticatedRequest): Promise<void> {
+    try {
+      const token: unknown = request.cookies?.[ACCESS_TOKEN_COOKIE];
+
+      if (typeof token !== 'string' || token === '') return;
+
+      const payload: unknown = await this.jwt.verifyAsync(token).catch(() => null);
+
+      if (isJwtPayload(payload)) {
+        request.user = { id: payload.sub, email: payload.email };
+      }
+    } catch {
+      // Identification is optional here; nothing about it may fail a request.
+    }
   }
 }

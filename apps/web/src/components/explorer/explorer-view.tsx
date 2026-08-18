@@ -11,13 +11,20 @@ import { ExplorerHeader } from '@/components/explorer/explorer-header';
 import { ExplorerSkeleton } from '@/components/explorer/explorer-skeleton';
 import { FolderTable } from '@/components/explorer/folder-table';
 import { MoveDialog } from '@/components/explorer/move-dialog';
+import { ShareDialog, type ShareTarget } from '@/components/share/share-dialog';
 import { UploadPanel } from '@/components/upload/upload-panel';
 import { PdfViewerDialog } from '@/components/viewer/pdf-viewer-dialog';
 import { Button } from '@/components/ui/button';
 import { ApiError, describeError, suggestedNameFrom } from '@/lib/api/client';
 import type { ChildSortField, SortDirection } from '@/lib/api/folders';
 import type { ChildEntry } from '@/lib/api/types';
-import { useFolder, useFolderChildren, useInvalidateFolder, useRenameEntry } from '@/lib/explorer/queries';
+import { type ExplorerMode, ownerMode } from '@/lib/explorer/explorer-mode';
+import {
+  useFolder,
+  useFolderChildren,
+  useInvalidateFolder,
+  useRenameEntry,
+} from '@/lib/explorer/queries';
 
 function readSort(value: string | null): ChildSortField {
   return value === 'size' || value === 'updatedAt' ? value : 'name';
@@ -27,7 +34,16 @@ function readDirection(value: string | null): SortDirection {
   return value === 'desc' ? 'desc' : 'asc';
 }
 
-export function ExplorerView({ folderId }: { folderId: string }) {
+interface ExplorerViewProps {
+  readonly folderId: string;
+  /**
+   * Owner drive or shared link. Only addressing differs — read-only behaviour
+   * comes from the role the API reports, not from here.
+   */
+  readonly mode?: ExplorerMode;
+}
+
+export function ExplorerView({ folderId, mode = ownerMode }: ExplorerViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -35,8 +51,8 @@ export function ExplorerView({ folderId }: { folderId: string }) {
   const sort = readSort(searchParams.get('sort'));
   const direction = readDirection(searchParams.get('dir'));
 
-  const folder = useFolder(folderId);
-  const children = useFolderChildren(folderId, sort, direction);
+  const folder = useFolder(folderId, mode.token);
+  const children = useFolderChildren(folderId, sort, direction, mode.token);
   const invalidate = useInvalidateFolder(folderId);
   const rename = useRenameEntry(folderId);
 
@@ -44,6 +60,7 @@ export function ExplorerView({ folderId }: { folderId: string }) {
   const [moving, setMoving] = useState<ChildEntry | null>(null);
   const [deleting, setDeleting] = useState<ChildEntry | null>(null);
   const [viewing, setViewing] = useState<ChildEntry | null>(null);
+  const [sharing, setSharing] = useState<ShareTarget | null>(null);
 
   function applySort(field: ChildSortField): void {
     const nextDirection = field === sort && direction === 'asc' ? 'desc' : 'asc';
@@ -52,12 +69,12 @@ export function ExplorerView({ folderId }: { folderId: string }) {
     params.set('sort', field);
     params.set('dir', nextDirection);
     // `push`, not `replace`: sorting is a step the Back button should undo.
-    router.push(`/d/${folderId}?${params.toString()}`, { scroll: false });
+    router.push(`${mode.hrefFor(folderId)}?${params.toString()}`, { scroll: false });
   }
 
   function openEntry(entry: ChildEntry): void {
     if (entry.type === 'folder') {
-      router.push(`/d/${entry.id}`);
+      router.push(mode.hrefFor(entry.id));
       return;
     }
     setViewing(entry);
@@ -107,7 +124,7 @@ export function ExplorerView({ folderId }: { folderId: string }) {
 
   return (
     <div className="space-y-6">
-      <ExplorerHeader folder={folder.data} onCreated={() => invalidate()} />
+      <ExplorerHeader folder={folder.data} mode={mode} onCreated={() => invalidate()} />
 
       <div className="rounded-lg border">
         {children.isPending && <ExplorerSkeleton />}
@@ -129,6 +146,7 @@ export function ExplorerView({ folderId }: { folderId: string }) {
           <FolderTable
             items={items}
             canEdit={canEdit}
+            folderHref={mode.hrefFor}
             sort={sort}
             direction={direction}
             onSort={applySort}
@@ -138,6 +156,13 @@ export function ExplorerView({ folderId }: { folderId: string }) {
             onRename={commitRename}
             onOpen={openEntry}
             onMove={setMoving}
+            onShare={(entry) =>
+              setSharing({
+                resourceType: entry.type === 'folder' ? 'FOLDER' : 'FILE',
+                resourceId: entry.id,
+                name: entry.name,
+              })
+            }
             onDelete={setDeleting}
           />
         )}
@@ -176,10 +201,13 @@ export function ExplorerView({ folderId }: { folderId: string }) {
         />
       )}
 
+      {sharing !== null && <ShareDialog target={sharing} onClose={() => setSharing(null)} />}
+
       {viewing !== null && (
         <PdfViewerDialog
           fileId={viewing.id}
           fileName={viewing.name}
+          token={mode.token}
           onClose={() => setViewing(null)}
         />
       )}

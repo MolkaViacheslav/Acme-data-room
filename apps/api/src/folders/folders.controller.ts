@@ -14,6 +14,8 @@ import {
 
 import type { AccessActor } from '../access/access.types';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { OptionalUser } from '../auth/optional-user.decorator';
+import { Public } from '../auth/public.decorator';
 
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { ListChildrenDto } from './dto/list-children.dto';
@@ -25,6 +27,10 @@ import type { ChildrenPage, DeletePreview, FolderDetail } from './folders.types'
 /**
  * HTTP only: parse, delegate, return. Every id below arrives from the client
  * and is resolved through `AccessService` inside the service, never here.
+ *
+ * The two read routes are `@Public()` so a share link opens without an
+ * account. They are not unguarded: an anonymous caller with no token is
+ * refused by `AccessService` exactly as before.
  */
 @Controller('folders')
 export class FoldersController {
@@ -35,17 +41,20 @@ export class FoldersController {
     return this.folders.create(actor, dto);
   }
 
+  @Public()
   @Get(':id')
   findOne(
-    @CurrentUser() actor: AccessActor,
+    @OptionalUser() actor: AccessActor | null,
     @Param('id', ParseUUIDPipe) id: string,
+    @Query('token') token?: string,
   ): Promise<FolderDetail> {
-    return this.folders.findOne(actor, id);
+    return this.folders.findOne(actor, id, token);
   }
 
+  @Public()
   @Get(':id/children')
   listChildren(
-    @CurrentUser() actor: AccessActor,
+    @OptionalUser() actor: AccessActor | null,
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: ListChildrenDto,
   ): Promise<ChildrenPage> {

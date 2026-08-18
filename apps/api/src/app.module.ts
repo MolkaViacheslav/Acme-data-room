@@ -8,6 +8,7 @@ import { FilesModule } from './files/files.module';
 import { FoldersModule } from './folders/folders.module';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { SharesModule } from './shares/shares.module';
 import { StorageModule } from './storage/storage.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { StorageModule } from './storage/storage.module';
     AuthModule,
     FoldersModule,
     FilesModule,
+    SharesModule,
     HealthModule,
   ],
 })

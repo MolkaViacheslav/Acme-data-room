@@ -14,6 +14,8 @@ import {
 
 import type { AccessActor } from '../access/access.types';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { OptionalUser } from '../auth/optional-user.decorator';
+import { Public } from '../auth/public.decorator';
 
 import { CreateUploadUrlDto } from './dto/create-upload-url.dto';
 import { MoveFileDto } from './dto/move-file.dto';
@@ -66,9 +68,11 @@ export class FilesController {
     return this.files.remove(actor, id);
   }
 
+  /** Public so a shared file opens without an account; still access-checked. */
+  @Public()
   @Get(':id/download-url')
   createDownloadUrl(
-    @CurrentUser() actor: AccessActor,
+    @OptionalUser() actor: AccessActor | null,
     @Param('id', ParseUUIDPipe) id: string,
     @Query('token') token?: string,
   ): Promise<DownloadUrl> {

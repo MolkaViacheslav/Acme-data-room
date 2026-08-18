@@ -1,4 +1,9 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  GoneException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { PrismaService } from '../prisma/prisma.service';
@@ -201,35 +206,115 @@ describe('AccessService', () => {
       );
     });
 
-    it('does not leak the refusal reason in the message', async () => {
-      prisma.folder.findUnique.mockResolvedValue({
-        id: 'folder-1',
-        path: '/root/folder-1/',
-        dataRoomId: 'room-1',
-        dataRoom: { ownerId: OWNER.id },
-      });
-      prisma.share.findMany.mockResolvedValue([
-        {
-          id: 'share-1',
+    /**
+     * Who may be told *why* they were refused.
+     *
+     * Presenting the exact token proves the caller was given the link, so
+     * naming the problem reveals nothing they did not already hold. Everyone
+     * else gets a bare 404, which is what stops the endpoint being used to
+     * discover which resources exist.
+     */
+    describe('refusal reasons', () => {
+      function shareOnFolder(overrides: Record<string, unknown>) {
+        prisma.folder.findUnique.mockResolvedValue({
+          id: 'folder-1',
+          path: '/root/folder-1/',
           dataRoomId: 'room-1',
-          resourceType: 'FOLDER',
-          resourceId: 'folder-1',
-          mode: 'PUBLIC_LINK',
-          role: 'VIEWER',
-          token: 'real-token',
-          expiresAt: null,
-          revokedAt: new Date(),
-          recipients: [],
-        },
-      ]);
-      prisma.folder.findMany.mockResolvedValue([{ id: 'folder-1', path: '/root/folder-1/' }]);
+          dataRoom: { ownerId: OWNER.id },
+        });
+        prisma.share.findMany.mockResolvedValue([
+          {
+            id: 'share-1',
+            dataRoomId: 'room-1',
+            resourceType: 'FOLDER',
+            resourceId: 'folder-1',
+            mode: 'PUBLIC_LINK',
+            role: 'VIEWER',
+            token: 'the-real-token',
+            expiresAt: null,
+            revokedAt: null,
+            recipients: [],
+            ...overrides,
+          },
+        ]);
+        prisma.folder.findMany.mockResolvedValue([{ id: 'folder-1', path: '/root/folder-1/' }]);
+      }
 
-      const error = await service
-        .requireAccess(null, 'FOLDER', 'folder-1', { token: 'real-token' })
-        .catch((caught: unknown) => caught);
+      async function refusalFor(
+        actor: { id: string; email: string } | null,
+        token?: string,
+      ): Promise<unknown> {
+        return service
+          .requireAccess(actor, 'FOLDER', 'folder-1', token === undefined ? {} : { token })
+          .catch((caught: unknown) => caught);
+      }
 
-      expect(error).toBeInstanceOf(NotFoundException);
-      expect((error as Error).message).toBe('Not found.');
+      it('tells a token holder that the link was revoked', async () => {
+        shareOnFolder({ revokedAt: new Date() });
+
+        const error = await refusalFor(null, 'the-real-token');
+
+        expect(error).toBeInstanceOf(GoneException);
+        expect((error as GoneException).getResponse()).toMatchObject({ reason: 'REVOKED' });
+      });
+
+      it('tells a token holder that the link expired', async () => {
+        shareOnFolder({ expiresAt: new Date(Date.now() - 1000) });
+
+        const error = await refusalFor(null, 'the-real-token');
+
+        expect(error).toBeInstanceOf(GoneException);
+        expect((error as GoneException).getResponse()).toMatchObject({ reason: 'EXPIRED' });
+      });
+
+      it('asks an anonymous holder of a restricted link to sign in', async () => {
+        shareOnFolder({ mode: 'RESTRICTED', recipients: [{ email: 'ada@x.com', userId: null }] });
+
+        const error = await refusalFor(null, 'the-real-token');
+
+        expect(error).toBeInstanceOf(UnauthorizedException);
+        expect((error as UnauthorizedException).getResponse()).toMatchObject({
+          reason: 'SIGN_IN_REQUIRED',
+        });
+      });
+
+      it('tells a signed-in holder that the link names someone else', async () => {
+        shareOnFolder({ mode: 'RESTRICTED', recipients: [{ email: 'ada@x.com', userId: null }] });
+
+        const error = await refusalFor(STRANGER, 'the-real-token');
+
+        expect(error).toBeInstanceOf(ForbiddenException);
+        expect((error as ForbiddenException).getResponse()).toMatchObject({
+          reason: 'NOT_INVITED',
+        });
+      });
+
+      it('says nothing at all to someone who presents no token', async () => {
+        shareOnFolder({ revokedAt: new Date() });
+
+        const error = await refusalFor(STRANGER);
+
+        expect(error).toBeInstanceOf(NotFoundException);
+        expect((error as Error).message).toBe('Not found.');
+      });
+
+      it('says nothing at all to someone guessing a token', async () => {
+        shareOnFolder({ revokedAt: new Date() });
+
+        const error = await refusalFor(null, 'not-the-real-token');
+
+        expect(error).toBeInstanceOf(NotFoundException);
+        expect((error as Error).message).toBe('Not found.');
+      });
+
+      it('says nothing when the token is the right length but wrong', async () => {
+        // Guards the constant-time comparison against a length-only check.
+        shareOnFolder({ revokedAt: new Date() });
+
+        const error = await refusalFor(null, 'the-real-tokeX');
+
+        expect(error).toBeInstanceOf(NotFoundException);
+      });
     });
 
     it('returns the decision when access is granted', async () => {

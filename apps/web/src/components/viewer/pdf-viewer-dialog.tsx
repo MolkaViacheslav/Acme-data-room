@@ -18,6 +18,8 @@ import { fetchDownloadUrl } from '@/lib/api/files';
 interface PdfViewerDialogProps {
   readonly fileId: string;
   readonly fileName: string;
+  /** Present when the file is being opened through a share link. */
+  readonly token?: string;
   readonly onClose: () => void;
 }
 
@@ -28,10 +30,10 @@ interface PdfViewerDialogProps {
  * keeps it, but any reload needs a fresh link — hence the retry, which asks for
  * a new URL rather than replaying the expired one.
  */
-export function PdfViewerDialog({ fileId, fileName, onClose }: PdfViewerDialogProps) {
+export function PdfViewerDialog({ fileId, fileName, token, onClose }: PdfViewerDialogProps) {
   const link = useQuery({
-    queryKey: ['file', fileId, 'download-url'],
-    queryFn: () => fetchDownloadUrl(fileId),
+    queryKey: ['file', fileId, 'download-url', token ?? null],
+    queryFn: () => fetchDownloadUrl(fileId, token),
     // Never reuse a cached URL: it may already have expired.
     gcTime: 0,
     staleTime: 0,

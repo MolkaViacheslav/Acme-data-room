@@ -13,6 +13,8 @@ interface SortableHeaderProps {
   readonly direction: SortDirection;
   readonly onSort: (field: ChildSortField) => void;
   readonly className?: string;
+  /** Must match the alignment of the cells below, or the column looks broken. */
+  readonly align?: 'left' | 'right';
 }
 
 export function SortableHeader({
@@ -22,6 +24,7 @@ export function SortableHeader({
   direction,
   onSort,
   className,
+  align = 'left',
 }: SortableHeaderProps) {
   const isActive = activeField === field;
 
@@ -30,17 +33,22 @@ export function SortableHeader({
       <button
         type="button"
         onClick={() => onSort(field)}
-        className="text-muted-foreground hover:text-foreground -mx-2 flex items-center gap-1 rounded px-2 py-1 text-sm font-medium transition-colors"
+        className={cn(
+          'text-muted-foreground hover:text-foreground -mx-2 flex items-center gap-1 rounded px-2 py-1 text-sm font-medium transition-colors',
+          // The header is a flex container, so `text-right` on the cell does
+          // nothing to it — the alignment has to be set on the flex axis.
+          align === 'right' && 'w-full justify-end',
+        )}
       >
         {label}
         {isActive ? (
           direction === 'asc' ? (
-            <ArrowUp className="size-3.5" aria-hidden />
+            <ArrowUp className="size-3.5 shrink-0" aria-hidden />
           ) : (
-            <ArrowDown className="size-3.5" aria-hidden />
+            <ArrowDown className="size-3.5 shrink-0" aria-hidden />
           )
         ) : (
-          <ChevronsUpDown className={cn('size-3.5 opacity-40')} aria-hidden />
+          <ChevronsUpDown className="size-3.5 shrink-0 opacity-40" aria-hidden />
         )}
       </button>
     </TableHead>

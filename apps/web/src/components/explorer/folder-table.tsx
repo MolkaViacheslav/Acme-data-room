@@ -9,6 +9,7 @@ import type { ChildEntry } from '@/lib/api/types';
 interface FolderTableProps {
   readonly items: readonly ChildEntry[];
   readonly canEdit: boolean;
+  readonly folderHref: (folderId: string) => string;
   readonly sort: ChildSortField;
   readonly direction: SortDirection;
   readonly onSort: (field: ChildSortField) => void;
@@ -18,12 +19,14 @@ interface FolderTableProps {
   readonly onRename: (entry: ChildEntry, name: string) => void;
   readonly onOpen: (entry: ChildEntry) => void;
   readonly onMove: (entry: ChildEntry) => void;
+  readonly onShare: (entry: ChildEntry) => void;
   readonly onDelete: (entry: ChildEntry) => void;
 }
 
 export function FolderTable({
   items,
   canEdit,
+  folderHref,
   sort,
   direction,
   onSort,
@@ -33,6 +36,7 @@ export function FolderTable({
   onRename,
   onOpen,
   onMove,
+  onShare,
   onDelete,
 }: FolderTableProps) {
   return (
@@ -52,7 +56,8 @@ export function FolderTable({
             activeField={sort}
             direction={direction}
             onSort={onSort}
-            className="w-28 text-right"
+            className="w-28"
+            align="right"
           />
           <SortableHeader
             field="updatedAt"
@@ -74,12 +79,14 @@ export function FolderTable({
             key={entry.id}
             entry={entry}
             canEdit={canEdit}
+            folderHref={folderHref}
             isRenaming={renamingId === entry.id}
             onStartRename={() => onStartRename(entry)}
             onCancelRename={onCancelRename}
             onRename={(name) => onRename(entry, name)}
             onOpen={() => onOpen(entry)}
             onMove={() => onMove(entry)}
+            onShare={() => onShare(entry)}
             onDelete={() => onDelete(entry)}
           />
         ))}

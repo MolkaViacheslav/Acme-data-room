@@ -30,7 +30,12 @@ function collapse(trail: readonly BreadcrumbEntry[]): Segment[] {
   ];
 }
 
-export function Breadcrumbs({ trail }: { trail: readonly BreadcrumbEntry[] }) {
+interface BreadcrumbsProps {
+  readonly trail: readonly BreadcrumbEntry[];
+  readonly hrefFor: (folderId: string) => string;
+}
+
+export function Breadcrumbs({ trail, hrefFor }: BreadcrumbsProps) {
   const segments = collapse(trail);
 
   return (
@@ -51,7 +56,7 @@ export function Breadcrumbs({ trail }: { trail: readonly BreadcrumbEntry[] }) {
                 </span>
               ) : (
                 <Link
-                  href={`/d/${segment.entry?.id ?? ''}`}
+                  href={hrefFor(segment.entry?.id ?? '')}
                   className="hover:text-foreground transition-colors"
                 >
                   {segment.entry?.name}

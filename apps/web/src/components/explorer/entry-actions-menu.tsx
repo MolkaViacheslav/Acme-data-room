@@ -1,6 +1,13 @@
 'use client';
 
-import { FolderInput, MoreHorizontal, Pencil, SquareArrowOutUpRight, Trash2 } from 'lucide-react';
+import {
+  FolderInput,
+  MoreHorizontal,
+  Pencil,
+  Share2,
+  SquareArrowOutUpRight,
+  Trash2,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +24,7 @@ interface EntryActionsMenuProps {
   readonly onOpen: () => void;
   readonly onRename: () => void;
   readonly onMove: () => void;
+  readonly onShare: () => void;
   readonly onDelete: () => void;
 }
 
@@ -24,13 +32,13 @@ interface EntryActionsMenuProps {
  * Rendered only for an owner — a viewer gets no menu at all, rather than one
  * whose every item would be refused.
  *
- * Sharing joins this menu in the next phase, together with its dialog.
  */
 export function EntryActionsMenu({
   entry,
   onOpen,
   onRename,
   onMove,
+  onShare,
   onDelete,
 }: EntryActionsMenuProps) {
   return (
@@ -55,6 +63,11 @@ export function EntryActionsMenu({
         <DropdownMenuItem onSelect={onMove}>
           <FolderInput className="size-4" />
           Move
+        </DropdownMenuItem>
+
+        <DropdownMenuItem onSelect={onShare}>
+          <Share2 className="size-4" />
+          Share
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

@@ -1,6 +1,13 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  GoneException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import { PrismaService } from '../prisma/prisma.service';
+import { constantTimeEquals } from '../shared/constant-time-equals';
 
 import type {
   AccessActor,
@@ -42,17 +49,26 @@ export class AccessService {
     resourceId: string,
     options: ResolveAccessOptions = {},
   ): Promise<AccessDecision> {
-    const located = await this.locateResource(resourceType, resourceId);
+    const evaluated = await this.evaluate(actor, resourceType, resourceId, options);
 
     // A resource that does not exist and a resource you may not see are
     // deliberately indistinguishable from here on.
-    if (located === null) {
-      return { role: 'NONE', reason: 'NO_MATCHING_SHARE' };
-    }
+    return evaluated?.decision ?? { role: 'NONE', reason: 'NO_MATCHING_SHARE' };
+  }
+
+  private async evaluate(
+    actor: AccessActor | null,
+    resourceType: ShareResourceType,
+    resourceId: string,
+    options: ResolveAccessOptions,
+  ): Promise<{ decision: AccessDecision; shares: readonly ShareCandidate[] } | null> {
+    const located = await this.locateResource(resourceType, resourceId);
+
+    if (located === null) return null;
 
     const shares = await this.loadShareCandidates(located.resource.dataRoomId);
 
-    return decideAccess({
+    const decision = decideAccess({
       actor,
       dataRoomOwnerId: located.dataRoomOwnerId,
       resource: located.resource,
@@ -60,6 +76,8 @@ export class AccessService {
       presentedToken: options.token ?? null,
       now: new Date(),
     });
+
+    return { decision, shares };
   }
 
   /**
@@ -76,13 +94,80 @@ export class AccessService {
     resourceId: string,
     options: ResolveAccessOptions = {},
   ): Promise<GrantedAccess> {
-    const decision = await this.resolveAccess(actor, resourceType, resourceId, options);
+    const evaluated = await this.evaluate(actor, resourceType, resourceId, options);
 
-    if (decision.role === 'NONE') {
-      throw new NotFoundException('Not found.');
+    if (evaluated === null) throw new NotFoundException('Not found.');
+    if (evaluated.decision.role !== 'NONE') return evaluated.decision;
+
+    this.refuse(evaluated.shares, actor, options.token ?? null);
+  }
+
+  /**
+   * Turns a refusal into a response.
+   *
+   * Almost everyone gets a bare 404: someone who may not see a resource must
+   * not learn it exists. The exception is a caller presenting a token that
+   * exactly matches a real share — they were given that link, so telling them
+   * it was revoked, has expired, or is addressed to a different account reveals
+   * nothing they did not already hold, and it is the difference between a
+   * usable message and a dead end.
+   *
+   * The comparison is constant-time so this cannot be used to discover a token.
+   */
+  private refuse(
+    shares: readonly ShareCandidate[],
+    actor: AccessActor | null,
+    presentedToken: string | null,
+  ): never {
+    // Anonymous and holding nothing: there is no resource in the system this
+    // caller could be granted, so this says nothing about whether it exists.
+    // Keeping it a 401 is what lets the frontend send them to sign in rather
+    // than showing "not found" to someone whose session simply lapsed.
+    if (actor === null && (presentedToken === null || presentedToken === '')) {
+      throw new UnauthorizedException({
+        reason: 'SIGN_IN_REQUIRED',
+        message: 'You are not signed in.',
+      });
     }
 
-    return decision;
+    const held =
+      presentedToken === null || presentedToken === ''
+        ? undefined
+        : shares.find(
+            (share) =>
+              share.token !== null &&
+              share.token !== '' &&
+              constantTimeEquals(share.token, presentedToken),
+          );
+
+    if (held !== undefined) {
+      if (held.revokedAt !== null) {
+        throw new GoneException({
+          reason: 'REVOKED',
+          message: 'Access to this item has been revoked.',
+        });
+      }
+
+      if (held.expiresAt !== null && held.expiresAt.getTime() <= Date.now()) {
+        throw new GoneException({ reason: 'EXPIRED', message: 'This link has expired.' });
+      }
+
+      if (held.mode === 'RESTRICTED') {
+        // The link names people. Say which problem it is: not signed in at all,
+        // or signed in as somebody who was not invited.
+        throw actor === null
+          ? new UnauthorizedException({
+              reason: 'SIGN_IN_REQUIRED',
+              message: 'Sign in to open this shared item.',
+            })
+          : new ForbiddenException({
+              reason: 'NOT_INVITED',
+              message: 'This link was shared with a different email address.',
+            });
+      }
+    }
+
+    throw new NotFoundException('Not found.');
   }
 
   /**

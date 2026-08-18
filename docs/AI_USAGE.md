@@ -144,3 +144,18 @@ appended to as work proceeds.
   listing could refresh, which the underlying hook already supported.
 - Gating on the role the API already returns was chosen deliberately so that
   Phase 7's read-only view falls out of Phase 6 rather than being retrofitted.
+
+### Phase 7 — Sharing
+
+- The disclosure rule — who may be told *why* they were refused — was designed,
+  argued and approved before implementation, because it is the one decision in
+  the phase where being wrong means leaking which resources exist.
+- The guard change was confirmed route by route before it was made, since it
+  touches every public endpoint and not only the sharing ones.
+- Three gaps in the plan surfaced while designing and were raised rather than
+  filled silently: no endpoint could resolve a token to its target, restricted
+  shares had no address to be opened at, and an anonymous caller could not
+  reach any route at all because every one of them was guarded.
+- The seven Phase 3 scenarios were re-run through the service layer against a
+  real database. Two existing tests failed and were *supposed* to: both asserted
+  the old bare-404 behaviour that decision A deliberately replaced.
