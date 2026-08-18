@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -10,6 +10,7 @@ import { SubmitButton } from '@/components/auth/submit-button';
 import { register } from '@/lib/api/auth';
 import { describeError } from '@/lib/api/client';
 import type { AuthUser, RegisterRequest } from '@/lib/api/types';
+import { safeNextPath } from '@/lib/auth/next-path';
 import { SESSION_QUERY_KEY } from '@/lib/auth/use-session';
 import {
   type FieldErrors,
@@ -22,7 +23,12 @@ const EMPTY: RegisterRequest = { name: '', email: '', password: '' };
 
 export function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+
+  // Someone who followed a share link and chose to create an account must come
+  // back to that link, not to their own empty drive.
+  const next = safeNextPath(searchParams.get('next'));
 
   const [values, setValues] = useState<RegisterRequest>(EMPTY);
   const [errors, setErrors] = useState<FieldErrors<RegisterRequest>>({});
@@ -32,7 +38,7 @@ export function RegisterForm() {
     onSuccess: (user: AuthUser) => {
       queryClient.setQueryData(SESSION_QUERY_KEY, user);
       toast.success(`Your data room is ready, ${user.name}.`);
-      router.replace('/');
+      router.replace(next);
     },
     onError: (error: unknown) => {
       toast.error(describeError(error));

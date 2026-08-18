@@ -59,7 +59,7 @@ function ShareRow({
   }
 
   return (
-    <li className="flex items-center gap-3 py-2">
+    <li className="flex items-center gap-2 py-2">
       {share.mode === 'PUBLIC_LINK' ? (
         <Link2 className="text-muted-foreground size-4 shrink-0" aria-hidden />
       ) : (
@@ -79,7 +79,9 @@ function ShareRow({
         )}
       </div>
 
-      <Button variant="ghost" size="sm" onClick={() => void copy()}>
+      {/* Fixed width: "Copied" is wider than "Copy", and letting the button
+          resize pushed Revoke past the edge of the dialog. */}
+      <Button variant="ghost" size="sm" className="w-24 shrink-0" onClick={() => void copy()}>
         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
         {copied ? 'Copied' : 'Copy'}
       </Button>
@@ -89,7 +91,7 @@ function ShareRow({
         size="sm"
         disabled={revoke.isPending}
         onClick={() => revoke.mutate()}
-        className="text-destructive hover:text-destructive"
+        className="text-destructive hover:text-destructive w-24 shrink-0"
       >
         {revoke.isPending ? 'Revoking…' : 'Revoke'}
       </Button>

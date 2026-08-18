@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 
 import { Skeleton } from '@/components/ui/skeleton';
+import { safeNextPath } from '@/lib/auth/next-path';
 import { useSession } from '@/lib/auth/use-session';
 
 /**
@@ -21,8 +22,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const { data, isPending } = useSession();
 
-  const rawNext = searchParams.get('next');
-  const next = rawNext !== null && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
+  const next = safeNextPath(searchParams.get('next'));
 
   useEffect(() => {
     if (data !== undefined) router.replace(next);

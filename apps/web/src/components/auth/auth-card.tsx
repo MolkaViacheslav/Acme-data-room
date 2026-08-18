@@ -1,5 +1,4 @@
-import Link from 'next/link';
-
+import { AuthSwitchLink } from '@/components/auth/auth-switch-link';
 import {
   Card,
   CardContent,
@@ -38,9 +37,7 @@ export function AuthCard({
       <CardFooter className="justify-center">
         <p className="text-muted-foreground text-sm">
           {footerPrompt}{' '}
-          <Link href={footerHref} className="text-foreground font-medium underline underline-offset-4">
-            {footerLinkLabel}
-          </Link>
+          <AuthSwitchLink href={footerHref} label={footerLinkLabel} />
         </p>
       </CardFooter>
     </Card>

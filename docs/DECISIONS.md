@@ -398,3 +398,19 @@ Live: web on <https://acme-data-room-web.vercel.app>, API on
   for, so the check moved ahead of the lookup and a regression test asserts both
   answers are byte-identical. Found by probing the deployed API rather than by
   reading the code.
+- **A held link only explains itself when it actually covers what was asked
+  for.** `refuse()` first looked only at whether the presented token matched a
+  real share, so an invited recipient who navigated outside the shared subtree
+  was told "this link was shared with a different email address" — untrue, and
+  confusing. It now falls through to a plain 404 whenever the decision reason is
+  `NO_MATCHING_SHARE`. Caught by the sequence test written for the invited-user
+  journey, which is exactly why that test was written as a sequence rather than
+  as separate cases.
+- **`?next=` is parsed in one place, `lib/auth/next-path.ts`.** It was worked
+  out separately in the sign-in form and the auth gate, and the sign-up form did
+  not do it at all — so following a share link and choosing "create one" dropped
+  the destination and landed the new account in its own empty drive. The
+  switch-link between sign-in and sign-up now carries it too.
+- **A 401 in the explorer redirects to sign-in rather than rendering.** It used
+  to show "Could not open this folder — You are not signed in", which reads as a
+  failure when it is an instruction, and left no way forward.

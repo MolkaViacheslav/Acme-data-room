@@ -12,6 +12,7 @@ import { constantTimeEquals } from '../shared/constant-time-equals';
 import type {
   AccessActor,
   AccessDecision,
+  DenialReason,
   GrantedAccess,
   ResourceLocator,
   ShareCandidate,
@@ -112,7 +113,7 @@ export class AccessService {
     if (evaluated === null) throw new NotFoundException('Not found.');
     if (evaluated.decision.role !== 'NONE') return evaluated.decision;
 
-    this.refuse(evaluated.shares, actor, presentedToken);
+    this.refuse(evaluated.decision.reason, evaluated.shares, actor, presentedToken);
   }
 
   /**
@@ -126,12 +127,22 @@ export class AccessService {
    * usable message and a dead end.
    *
    * The comparison is constant-time so this cannot be used to discover a token.
+   *
+   * A held link only explains itself when it actually covers what was asked
+   * for. `NO_MATCHING_SHARE` means no share said anything about this resource,
+   * so a recipient who wanders outside what was shared with them gets a plain
+   * 404 rather than being told, untruthfully, that the link is not theirs.
    */
   private refuse(
+    reason: DenialReason,
     shares: readonly ShareCandidate[],
     actor: AccessActor | null,
     presentedToken: string | null,
   ): never {
+    if (reason === 'NO_MATCHING_SHARE') {
+      throw new NotFoundException('Not found.');
+    }
+
     const held =
       presentedToken === null || presentedToken === ''
         ? undefined

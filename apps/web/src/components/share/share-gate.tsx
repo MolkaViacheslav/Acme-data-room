@@ -9,6 +9,7 @@ import { ShareUnavailable, type ShareProblem } from '@/components/share/share-un
 import { PdfViewerDialog } from '@/components/viewer/pdf-viewer-dialog';
 import { refusalReasonFrom } from '@/lib/api/client';
 import { resolveShareToken } from '@/lib/api/shares';
+import { withNext } from '@/lib/auth/next-path';
 import { shareMode } from '@/lib/explorer/explorer-mode';
 
 /**
@@ -39,6 +40,9 @@ interface ShareGateProps {
 
 export function ShareGate({ token, folderId }: ShareGateProps) {
   const router = useRouter();
+  // Return to the folder they were on, not just the root of the share.
+  const shareHref = folderId === undefined ? `/share/${token}` : `/share/${token}/${folderId}`;
+
   const shared = useQuery({
     queryKey: ['share', token],
     queryFn: () => resolveShareToken(token),
@@ -51,7 +55,7 @@ export function ShareGate({ token, folderId }: ShareGateProps) {
     return (
       <ShareUnavailable
         problem={problemFrom(shared.error)}
-        signInHref={`/login?next=${encodeURIComponent(`/share/${token}`)}`}
+        signInHref={withNext('/login', shareHref)}
       />
     );
   }

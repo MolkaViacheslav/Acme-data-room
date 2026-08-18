@@ -230,6 +230,51 @@ describeWithDatabase('sharing, end to end', () => {
       ).resolves.toMatchObject({ role: 'VIEWER' });
     });
 
+    /**
+     * The whole invited-by-email journey, in the order a person lives it.
+     *
+     * This is the path that broke in the browser: the API was right at every
+     * step, but the frontend dropped the link on the way through sign-up, so
+     * the last step landed in the new user's own drive instead of back here.
+     */
+    it('takes an invited stranger from "sign in" to access, in sequence', async () => {
+      const share = await restrictedOnLegal('late@example.com');
+
+      // 1. They open the link with no account at all.
+      const anonymous = await refusalFor(folders.findOne(null, legalId, share.token));
+      expect(anonymous).toBeInstanceOf(UnauthorizedException);
+      expect((anonymous as UnauthorizedException).getResponse()).toMatchObject({
+        reason: 'SIGN_IN_REQUIRED',
+      });
+
+      // 2. Signed in as somebody else, the link is still not theirs.
+      const wrongAccount = await refusalFor(folders.findOne(stranger, legalId, share.token));
+      expect(wrongAccount).toBeInstanceOf(ForbiddenException);
+
+      // 3. They register with the address the invitation named.
+      const registered = await createUserWithDataRoom(prisma, {
+        email: 'late@example.com',
+        name: 'Late',
+        passwordHash: 'x',
+      });
+      const invitedActor = { id: registered.id, email: registered.email };
+
+      // 4. The same token, unchanged, now opens the shared folder.
+      await expect(folders.findOne(invitedActor, legalId, share.token)).resolves.toMatchObject({
+        role: 'VIEWER',
+      });
+
+      // 5. And everything beneath it, without a share of its own.
+      await expect(folders.findOne(invitedActor, contractsId, share.token)).resolves.toMatchObject({
+        role: 'VIEWER',
+      });
+
+      // 6. But still nothing outside what was shared.
+      await expect(folders.findOne(invitedActor, rootId, share.token)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+    });
+
     it('refuses to be created with no recipients', async () => {
       await expect(
         shares.create(owner, {

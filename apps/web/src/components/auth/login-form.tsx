@@ -10,6 +10,7 @@ import { SubmitButton } from '@/components/auth/submit-button';
 import { login } from '@/lib/api/auth';
 import { describeError } from '@/lib/api/client';
 import type { AuthUser, LoginRequest } from '@/lib/api/types';
+import { safeNextPath } from '@/lib/auth/next-path';
 import { SESSION_QUERY_KEY } from '@/lib/auth/use-session';
 import { type FieldErrors, hasErrors, validateLoginForm } from '@/lib/auth/validation';
 
@@ -20,9 +21,7 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
-  // Only same-site paths: an absolute URL here would be an open redirect.
-  const rawNext = searchParams.get('next');
-  const next = rawNext !== null && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
+  const next = safeNextPath(searchParams.get('next'));
 
   const [values, setValues] = useState<LoginRequest>(EMPTY);
   const [errors, setErrors] = useState<FieldErrors<LoginRequest>>({});

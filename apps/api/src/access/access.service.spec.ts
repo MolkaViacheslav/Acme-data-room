@@ -289,6 +289,23 @@ describe('AccessService', () => {
         });
       });
 
+      it('does not claim the link belongs to someone else when it covers something else', async () => {
+        // The recipient is genuinely invited; they just asked for a resource
+        // outside the share. Answering NOT_INVITED here would be a lie.
+        shareOnFolder({
+          mode: 'RESTRICTED',
+          resourceId: 'folder-elsewhere',
+          recipients: [{ email: STRANGER.email, userId: STRANGER.id }],
+        });
+        prisma.folder.findMany.mockResolvedValue([
+          { id: 'folder-elsewhere', path: '/root/elsewhere/' },
+        ]);
+
+        const error = await refusalFor(STRANGER, 'the-real-token');
+
+        expect(error).toBeInstanceOf(NotFoundException);
+      });
+
       it('says nothing at all to someone who presents no token', async () => {
         shareOnFolder({ revokedAt: new Date() });
 

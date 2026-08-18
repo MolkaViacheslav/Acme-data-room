@@ -1,7 +1,7 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { ErrorState } from '@/components/common/error-state';
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { ApiError, describeError, suggestedNameFrom } from '@/lib/api/client';
 import type { ChildSortField, SortDirection } from '@/lib/api/folders';
 import type { ChildEntry } from '@/lib/api/types';
+import { withNext } from '@/lib/auth/next-path';
 import { type ExplorerMode, ownerMode } from '@/lib/explorer/explorer-mode';
 import {
   useFolder,
@@ -45,6 +46,7 @@ interface ExplorerViewProps {
 
 export function ExplorerView({ folderId, mode = ownerMode }: ExplorerViewProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   // Sorting lives in the URL so Back behaves and a link carries the view.
@@ -99,7 +101,15 @@ export function ExplorerView({ folderId, mode = ownerMode }: ExplorerViewProps) 
     );
   }
 
-  if (folder.isPending) return <ExplorerSkeleton />;
+  const needsSignIn = folder.error instanceof ApiError && folder.error.status === 401;
+
+  // "You are not signed in" is an instruction, not an error to read. Send them
+  // to sign in and bring them back to exactly this page afterwards.
+  useEffect(() => {
+    if (needsSignIn) router.replace(withNext('/login', pathname));
+  }, [needsSignIn, pathname, router]);
+
+  if (folder.isPending || needsSignIn) return <ExplorerSkeleton />;
 
   if (folder.isError) {
     const missing = folder.error instanceof ApiError && folder.error.status === 404;
